@@ -1,14 +1,11 @@
-#include <curses.h>
-#include "inventory.h"
+#include "interface.h"
 
-// Отображение инвентаря
 void display_inventory(inventory *inv, int selected_index) {
     if (!inv || !inv->win) return;
     
     werase(inv->win);
     box(inv->win, 0, 0);
     
-    // Заголовок с информацией о слотах
     mvwprintw(inv->win, 0, 2, " ИНВЕНТАРЬ [%d/%d] ", inv->count, inv->max_slots);
     
     inventory_node *current = inv->head;
@@ -16,12 +13,10 @@ void display_inventory(inventory *inv, int selected_index) {
     int index = 0;
     
     while (current && line < getmaxy(inv->win) - 1) {
-        // Выделение выбранного элемента
         if (index == selected_index) {
             wattron(inv->win, A_REVERSE);
         }
-        
-        // Отображение предмета
+
         if (current->type == ITEM_ARTIFACT) {
             artifact *art = current->item.Art;
             char equipped = art->is_equipped ? 'E' : ' ';
@@ -50,7 +45,6 @@ void display_inventory(inventory *inv, int selected_index) {
         index++;
     }
     
-    // Отображаем свободные слоты
     for (int i = inv->count; i < inv->max_slots && line < getmaxy(inv->win) - 1; i++) {
         mvwprintw(inv->win, line, 2, "[Свободный слот]");
         line++;

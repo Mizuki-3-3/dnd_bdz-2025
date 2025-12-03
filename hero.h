@@ -1,6 +1,7 @@
 #ifndef HERO_H
 #define HERO_H
 
+
 #include "inventory.h"
 
 #define MAX_NAME_LENGTH  32
@@ -17,8 +18,8 @@ typedef struct {
     int remaining_duration;  // Оставшаяся длительность в ходах
 } consumable_effect;
 
-typedef struct {
-    char name[MAX_NAME_LENGTH];
+
+typedef struct Hero{
     hero_class type;
     int level;
     int hp;
@@ -33,13 +34,12 @@ typedef struct {
     int base_magic;
     int exp;
     int exp_to_next;
-    inventory *inventory;
     consumable_effect active_effects[MAX_CONSUMABLE_EFFECTS];  //какие зельки заюзаны
     int effect_count;
 } Hero;
 
-Hero* create_hero(const char* name);
-void level_up(Hero* hero);
+Hero* create_hero(const char* name, int class);
+void level_up(Hero *hero, inventory *inv);
 int save_hero(const Hero* hero, const char* name);
 int load_hero(Hero* hero, const char* name);
 

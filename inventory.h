@@ -2,7 +2,9 @@
 #define INVENTORY_H
 
 #include "equipment.h"
-#include "hero.h"
+#include <curses.h>
+
+typedef struct Hero Hero;
 
 #define MAX_EQUIPPED 5
 #define BASE_CAPACITY 10

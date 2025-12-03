@@ -1,7 +1,5 @@
-#include <stdlib.h>
-#include <string.h>
-#include <curses.h>
 #include "inventory.h"
+#include <stdlib.h>
 
 
 inventory* create_inventory(void) {
@@ -198,6 +196,5 @@ void free_inventory(inventory *inv) {
         free(current);
         current = next;
     }
-    
     free(inv);
 }
