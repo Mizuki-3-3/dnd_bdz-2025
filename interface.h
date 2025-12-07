@@ -3,17 +3,23 @@
 
 #include <curses.h>
 #include <panel.h>
-#include "inventory.h"
+#include <stdlib.h>
+#include <string.h>
+// #include "inventory.h"
 
-struct curw
-{
+typedef struct cursed_window{
     WINDOW *background;
     WINDOW *decoration;
     WINDOW *overlay;
     PANEL *panel;
-};
+}curw;
 
-void display_inventory(inventory *inv, int selected_index);
-void display_inventory_status(WINDOW *win, inventory *inv);
+int start_to_work(void);
+curw *make_new_win(int y, int x, int height, int width, char *label);
+void tui_win_label(WINDOW *win, char *label, int pos);
+
+
+// void display_inventory(inventory *inv, int selected_index);
+// void display_inventory_status(WINDOW *win, inventory *inv);
 
 #endif
