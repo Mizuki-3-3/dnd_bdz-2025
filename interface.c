@@ -103,7 +103,7 @@ void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db) {
     wrefresh(win);
 }
 
-// Всплывающее окно полного инвентаря
+// Всплывающее окно инвентаря
 curw* create_inventory_popup(int height, int width) {
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
@@ -123,8 +123,7 @@ curw* create_inventory_popup(int height, int width) {
 }
 
 
-void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, 
-                         int selected_index, game_state *state) {
+void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state) {
     if (!inv_popup || !inv || !db) return;
     
     WINDOW *win = inv_popup->overlay;

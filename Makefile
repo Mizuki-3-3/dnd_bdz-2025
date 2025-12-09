@@ -5,7 +5,7 @@ LDD="-LC:\Users\kamila\Desktop\tools\PDCurses-3.9\wincon"
 LDFLAGS = -lpdcurses
 
 CFLAGS = -Wall -mconsole $(INC)
-SRCS = main.c inventory.c equipment.c
+SRCS = main.c inventory.c equipment.c interface.c
 OBJS = $(SRCS:.c=.o)
 
 all: inventory_test.exe
@@ -19,6 +19,9 @@ equipment.o: equipment.c equipment.h
 
 inventory.o: inventory.c inventory.h equipment.h
 	$(CC) $(CFLAGS) -c inventory.c -o inventory.o
+
+interface.o: interface.c interface.h inventory.h equipment.h
+	$(CC) $(CFLAGS) -c interface.c -o interface.o
 
 clean:
 	if exist *.o del *.o
