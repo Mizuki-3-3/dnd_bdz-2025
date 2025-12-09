@@ -1,6 +1,8 @@
 #include "inventory.h"
 #include <stdlib.h>
 
+extern item_database global_itemdb;
+
 
 inventory* create_inventory(void) {
     inventory *inv = malloc(sizeof(inventory));
@@ -25,26 +27,34 @@ void inventory_update_capacity(inventory *inv, int player_level) {
 }
 
 
-int inventory_add_item(inventory *inv, void *item, item_type type) {
-    if (!inv || !item) {
+int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int quantity) {
+    if (!inv || !db) {
         return 0;  // проверка выделения памяти под инвентарь и под предмет
     }
     
     if (inv->count >= inv->max_slots) {
         return -1;  // Инвентарь переполнен
     }
+
+    item_template* template = itemdb_find_by_id(db, item_id);
+    if (!template) {
+        return 0;  // Предмет не найден в базе
+    }
+
     inventory_node *new_node = malloc(sizeof(inventory_node));
     if (!new_node) {
         return 0;  // память не выделилась подэлемент в инвентаре
     }
     
-    new_node->type = type;
+    new_node->item_id = item_id;
     new_node->next = NULL;
 
-    if (type == ITEM_ARTIFACT) {
-        new_node->item.Art = (artifact*)item;
+    if (template->is_artifact) {
+        new_node->type = ITEM_ARTIFACT;
+        new_node->state.artifact_state.is_equipped = 0;  // Не надет
     } else {
-        new_node->item.Cons = (consumable*)item;
+        new_node->type = ITEM_CONSUMABLE;
+        new_node->state.consumable_state.quantity = quantity;
     }
     if (!inv->head) {
         inv->head = new_node;
@@ -53,35 +63,31 @@ int inventory_add_item(inventory *inv, void *item, item_type type) {
         inv->tail->next = new_node;
         inv->tail = new_node;
     }
+    
     inv->count++;
     return 1;
 }
 
 int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
-    if (!inv || !node_to_remove) return 0; //проверка на выд памяти
+    if (!inv || !node_to_remove) return 0;
     
-    if (!inv->head) return 0;     // оно пустое
+    if (!inv->head) return 0;
     
+    // Если удаляем первый элемент
     if (inv->head == node_to_remove) {
         inventory_node *temp = inv->head;
         
-        
-        if (temp->type == ITEM_ARTIFACT) {    //надо снять экипированое 
+        // Если предмет был экипирован - снимаем
+        if (temp->type == ITEM_ARTIFACT && temp->state.artifact_state.is_equipped) {
             for (int i = 0; i < MAX_EQUIPPED; i++) {
-                if (inv->equipped[i] == temp->item.Art) {
+                if (inv->equipped[i] == temp) {
                     inv->equipped[i] = NULL;
+                    break;
                 }
             }
         }
         
         inv->head = inv->head->next;
-        
-        if (temp->type == ITEM_ARTIFACT) {
-            free(temp->item.Art);
-        } else {
-            free(temp->item.Cons);
-        }
-        
         free(temp);
         inv->count--;
         
@@ -93,78 +99,67 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
         return 1;
     }
     
+    // Ищем элемент в списке
     inventory_node *current = inv->head;
     while (current->next && current->next != node_to_remove) {
         current = current->next;
     }
     
-    if (!current->next) return 0;  // проверка что арт\вкусняшка нашелся
+    if (!current->next) return 0;  // Элемент не найден
     
     inventory_node *temp = current->next;
-    current->next = temp->next; //слепили предыдущий со следущим
+    current->next = temp->next;
     
     if (temp == inv->tail) {
         inv->tail = current;
     }
     
-    if (temp->type == ITEM_ARTIFACT) {
+    // Если предмет был экипирован - снимаем
+    if (temp->type == ITEM_ARTIFACT && temp->state.artifact_state.is_equipped) {
         for (int i = 0; i < MAX_EQUIPPED; i++) {
-            if (inv->equipped[i] == temp->item.Art) {
+            if (inv->equipped[i] == temp) {
                 inv->equipped[i] = NULL;
+                break;
             }
         }
     }
     
-    inv->count--;
-    
-    if (temp->type == ITEM_ARTIFACT) {  //чистим
-        free(temp->item.Art);
-    } else {
-        free(temp->item.Cons);
-    }
-    
     free(temp);
+    inv->count--;
     return 1;
 }
 
 inventory_node* inventory_get_node_at_index(inventory *inv, int index) {
-    if (!inv || index < 0 || index >= inv->count) {
+    if (!inv || index < 0 || index > inv->count) {
         return NULL;
     }
     
     inventory_node *current = inv->head;
-    for (int i = 0; (i < index) && current; i++) {
+    for (int i = 1; (i < index) && current; i++) {
         current = current->next;
     }
     
     return current;
 }
 
-int inventory_equip_artifact(inventory *inv, artifact *artifact, equipment_slot slot) {
-    if (!inv || !artifact || slot < 0 || slot >= MAX_EQUIPPED) {
+int inventory_equip_artifact(inventory *inv, inventory_node *node, equipment_slot slot) {
+    if (!inv || !node || slot < 0 || slot >= MAX_EQUIPPED) {
         return 0;
     }
     
-    inventory_node *current = inv->head;
-    int found = 0;
-    while (current) {
-        if (current->type == ITEM_ARTIFACT && current->item.Art == artifact) {
-            found = 1;
-            break;
-        }
-        current = current->next;
+    // Проверяем, что это артефакт
+    if (node->type != ITEM_ARTIFACT) {
+        return 0;
     }
     
-    if (!found) return 0;
-    
-    // Снимаем предыдущий предмет из этого слота если есть
+    // Снимаем предыдущий предмет из этого слота
     if (inv->equipped[slot]) {
-        inv->equipped[slot]->is_equipped = 0;
+        inv->equipped[slot]->state.artifact_state.is_equipped = 0;
     }
     
     // Экипируем новый
-    inv->equipped[slot] = artifact;
-    artifact->is_equipped = 1;
+    inv->equipped[slot] = node;
+    node->state.artifact_state.is_equipped = 1;
     
     return 1;
 }
@@ -174,7 +169,7 @@ int inventory_unequip_artifact(inventory *inv, equipment_slot slot) {
         return 0;
     }
     
-    inv->equipped[slot]->is_equipped = 0;
+    inv->equipped[slot]->state.artifact_state.is_equipped = 0;
     inv->equipped[slot] = NULL;
     
     return 1;
@@ -186,15 +181,63 @@ void free_inventory(inventory *inv) {
     inventory_node *current = inv->head;
     while (current) {
         inventory_node *next = current->next;
-
-        if (current->type == ITEM_ARTIFACT) {    //чистим чистим
-            free(current->item.Art);
-        } else {
-            free(current->item.Cons);
-        }
-        
         free(current);
         current = next;
     }
     free(inv);
+}
+
+void display_inventory(inventory *inv, item_database *db, int selected_index) {
+    if (!inv || !inv->win || !db) return;
+    
+    werase(inv->win);
+    box(inv->win, 0, 0);
+    
+    // Заголовок
+    mvwprintw(inv->win, 0, 2, " ==Inventory== [%d/%d] ", inv->count, inv->max_slots);
+    
+    inventory_node *current = inv->head;
+    int line = 1;
+    int index = 0;
+    
+    while (current && line < getmaxy(inv->win) - 1) {
+        // Находим шаблон предмета
+        item_template* template = itemdb_find_by_id(db, current->item_id);
+        if (!template) {
+            // Пропускаем, если шаблон не найден
+            current = current->next;
+            index++;
+            continue;
+        }
+        
+        // Выделение выбранного элемента
+        if (index == selected_index) {
+            wattron(inv->win, A_REVERSE);
+        }
+        
+        // Отображение предмета
+        if (current->type == ITEM_ARTIFACT) {
+            char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
+            mvwprintw(inv->win, line, 2, "%c %s", equipped, template->name);
+        } else {
+            mvwprintw(inv->win, line, 2, "  %s x%d", 
+                     template->name, current->state.consumable_state.quantity);
+        }
+        
+        if (index == selected_index) {
+            wattroff(inv->win, A_REVERSE);
+        }
+        
+        current = current->next;
+        line++;
+        index++;
+    }
+    
+    // Отображаем свободные слоты
+    for (int i = inv->count; i < inv->max_slots && line < getmaxy(inv->win) - 1; i++) {
+        mvwprintw(inv->win, line, 2, "[Свободный слот]");
+        line++;
+    }
+    
+    wrefresh(inv->win);
 }

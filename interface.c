@@ -1,4 +1,5 @@
 #include "interface.h"
+#include "inventory.h"
 #include <locale.h>
 
 int start_to_work(){
@@ -63,6 +64,130 @@ void tui_win_label(WINDOW *win, char *label, int pos) {
     mvwaddch(win, 2, maxx - 1, ACS_RTEE);
 }
 
+
+
+// Отрисовка постоянной панели экипировки
+void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db) {
+    if (!eq_win || !inv || !db) return;
+    
+    WINDOW *win = eq_win->overlay;
+    werase(win);
+    
+    // Заголовок
+    mvwprintw(win, 0, 1, "==ЭКИПИРОВКА==");
+    
+    // Отображаем каждый слот
+    const char* slot_names[MAX_EQUIPPED] = {
+        "Оружие", "Броня", "Шлем", "Сапоги", "Амулет"
+    };
+    
+    for (int i = 0; i < MAX_EQUIPPED; i++) {
+        mvwprintw(win, i*2 + 2, 1, "%s:", slot_names[i]);
+        
+        if (inv->equipped[i]) {
+            item_template *item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
+            if (item) {
+                // Выделяем цветом по редкости
+                wattron(win, COLOR_PAIR(2)); // Например, красный для артефактов
+                mvwprintw(win, i*2 + 2, 12, "%-20s", item->name);
+                wattroff(win, COLOR_PAIR(2));
+            }
+        } else {
+            mvwprintw(win, i*2 + 2, 12, "[пусто]");
+        }
+    }
+    
+    // Статус инвентаря внизу
+    mvwprintw(win, 12, 1, "Инвентарь: %d/%d", inv->count, inv->max_slots);
+    
+    wrefresh(win);
+}
+
+// Всплывающее окно полного инвентаря
+curw* create_inventory_popup(int height, int width) {
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    
+    // Центрируем окно
+    int start_y = (max_y - height) / 2;
+    int start_x = (max_x - width) / 2;
+    
+    curw *inv_popup = make_new_win(start_y, start_x, height, width, "ИНВЕНТАРЬ");
+    
+    // Добавляем подсказки
+    WINDOW *win = inv_popup->overlay;
+    mvwprintw(win, height-4, 2, "↑↓: Выбор  E: Использовать/Надеть");
+    mvwprintw(win, height-3, 2, "D: Выбросить  TAB: Вернуться");
+    
+    return inv_popup;
+}
+
+
+void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, 
+                         int selected_index, game_state *state) {
+    if (!inv_popup || !inv || !db) return;
+    
+    WINDOW *win = inv_popup->overlay;
+    werase(win);
+    
+    int max_y, max_x;
+    getmaxyx(win, max_y, max_x);
+    
+    // Заголовок с информацией
+    mvwprintw(win, 0, 1, "Предметы [%d/%d]:", inv->count, inv->max_slots);
+    
+    inventory_node *current = inv->head;
+    int line = 2;
+    int index = 0;
+    
+    // Отображаем предметы
+    while (current && line < max_y - 5) {
+        item_template *template = itemdb_find_by_id(db, current->item_id);
+        if (!template) {
+            current = current->next;
+            index++;
+            continue;
+        }
+        
+        // Выделение выбранного
+        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+            wattron(win, A_REVERSE);
+        }
+        
+        // Иконка типа предмета
+        char type_char = (current->type == ITEM_ARTIFACT) ? '⚔' : '⚗';
+        
+        // Для артефактов - статус экипировки
+        if (current->type == ITEM_ARTIFACT) {
+            char equip_char = current->state.artifact_state.is_equipped ? '✓' : ' ';
+            mvwprintw(win, line, 2, "%c [%c] %-20s", type_char, equip_char, template->name);
+        } else {
+            mvwprintw(win, line, 2, "%c     %-20s x%d", 
+                     type_char, template->name, current->state.consumable_state.quantity);
+        }
+        
+        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+            wattroff(win, A_REVERSE);
+        }
+        
+        // Отображение описания для выбранного предмета
+        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+            mvwprintw(win, max_y - 2, 2, "%-60s", template->description);
+        }
+        
+        current = current->next;
+        line++;
+        index++;
+    }
+    
+    // Свободные слоты
+    for (int i = inv->count; i < inv->max_slots && line < max_y - 5; i++) {
+        mvwprintw(win, line, 2, "[  Свободный слот  ]");
+        line++;
+    }
+    
+    wrefresh(win);
+}
 
 // void display_inventory(inventory *inv, int selected_index) {
 //     if (!inv || !inv->win) return;
