@@ -5,29 +5,25 @@ LDD="-LC:\Users\kamila\Desktop\tools\PDCurses-3.9\wincon"
 LDFLAGS = -lpdcurses
 
 CFLAGS = -Wall -mconsole $(INC)
-SRCS = main.c inventory.c equipment.c interface.c
+SRCS = main.c interface.c history.c
 OBJS = $(SRCS:.c=.o)
 
-all: inventory_test.exe
+all: history_test.exe
 
-inventory_test.exe: $(OBJS)
-	$(CC) $(OBJS) -o inventory_test.exe $(LDD) $(LDFLAGS) 
+history_test.exe: $(OBJS)
+	$(CC) $(OBJS) -o history_test.exe $(LDD) $(LDFLAGS) 
 
+history.o: history.c history.h
+	$(CC) $(CFLAGS) -c history.c -o history.o
 
-equipment.o: equipment.c equipment.h
-	$(CC) $(CFLAGS) -c equipment.c -o equipment.o
-
-inventory.o: inventory.c inventory.h equipment.h
-	$(CC) $(CFLAGS) -c inventory.c -o inventory.o
-
-interface.o: interface.c interface.h inventory.h equipment.h
+interface.o: interface.c interface.h 
 	$(CC) $(CFLAGS) -c interface.c -o interface.o
 
 clean:
 	if exist *.o del *.o
-	if exist inventory_test.exe del inventory_test.exe
-run: inventory_test.exe
-	inventory_test.exe
+	if exist history_test.exe del history_test.exe
+run: history_test.exe
+	history_test.exe
 
 rebuild: clean all
 

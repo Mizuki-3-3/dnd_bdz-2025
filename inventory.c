@@ -1,4 +1,5 @@
 #include "inventory.h"
+#include "database.h"
 #include <stdlib.h>
 
 extern item_database global_itemdb;
@@ -49,7 +50,7 @@ int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int
     new_node->item_id = item_id;
     new_node->next = NULL;
 
-    if (template->is_artifact) {
+    if (template->id>200) {
         new_node->type = ITEM_ARTIFACT;
         new_node->state.artifact_state.is_equipped = 0;  // Не надет
     } else {

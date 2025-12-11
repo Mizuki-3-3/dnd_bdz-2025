@@ -1,25 +1,29 @@
 #include "interface.h"
-#include "inventory.h"
 #include <locale.h>
 
 int start_to_work(){
-  initscr(); //инициализируем библиотеку
-  cbreak();  //Не использовать буфер для функции getch()
-  raw();
-  nonl();
-  noecho(); //Не печатать на экране то, что набирает пользователь на клавиатуре
-  curs_set(0); //Убрать курсор
-  keypad(stdscr, TRUE); //Активировать специальные клавиши клавиатуры (например, если хотим использовать горячие клавиши)
-  if (has_colors() == FALSE){
-      endwin();
-      puts("\nYour terminal does not support color");
-      return (1);
-  }
-  start_color(); //Активируем поддержку цвета
-  init_color(COLOR_WHITE, 800, 800, 100);
-  init_pair(1, COLOR_BLACK, COLOR_BLUE); //Все цветовые пары (background-foreground) должны быть заданы прежде, чем их используют
-  init_pair(2, COLOR_WHITE, COLOR_RED);
-  init_pair(3, COLOR_WHITE, COLOR_BLACK);
+
+    initscr(); //инициализируем библиотеку
+    cbreak();  //Не использовать буфер для функции getch()
+    raw();
+    nonl();
+    noecho(); //Не печатать на экране то, что набирает пользователь на клавиатуре
+    curs_set(0); //Убрать курсор
+    keypad(stdscr, TRUE); //Активировать специальные клавиши клавиатуры (например, если хотим использовать горячие клавиши)
+    if (has_colors() == FALSE){
+        endwin();
+        puts("\nYour terminal does not support color");
+        return (1);
+    }
+    start_color(); //Активируем поддержку цвета
+    init_color(COLOR_WHITE, 800, 800, 100);
+    init_pair(1, COLOR_WHITE, COLOR_BLUE);
+    init_pair(2, COLOR_WHITE, COLOR_RED);
+    init_pair(3, COLOR_WHITE, COLOR_BLACK);
+
+    int y, x;
+    getmaxyx(stdscr, y, x);
+    curw *win = make_new_win(0, 0, y, x, "==Dungeons==");
     
   return 0;
 }
@@ -30,14 +34,14 @@ curw *make_new_win(int y, int x, int height, int width, char *label){
     new->background = newwin(height, width, y, x);
     wbkgd(new->background, COLOR_PAIR(3));
     for (int i= width*0.1; i<width;i++)
-		mvwaddch(new->background, height-1, i, ACS_BLOCK);
+		mvwaddch(new->background, height-1, i, '#');
     for (int i= height*0.2; i<height;i++)
-		mvwaddch(new->background, i, width-1, ACS_BLOCK);
+		mvwaddch(new->background, i, width-1, '#');
     wattroff(new->background, COLOR_PAIR(3));
     //оформили передник
     new->decoration = derwin(new->background,  height-2, width-2, 1, 1);
     wbkgd(new->decoration, COLOR_PAIR(1));
-    box(new->decoration, 0, 0);
+    wborder(new->decoration, '|', '|', '-', '-', '+', '+', '+', '+');
     int xfd, yfd;
     getmaxyx(new->decoration, yfd, xfd);
     new->overlay = derwin(new->decoration,  yfd-4, xfd-2, 3, 1);//рабочее дочернее окно
@@ -66,127 +70,149 @@ void tui_win_label(WINDOW *win, char *label, int pos) {
 
 
 
-// Отрисовка постоянной панели экипировки
-void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db) {
-    if (!eq_win || !inv || !db) return;
+// // Отрисовка постоянной панели экипировки
+// void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db) {
+//     if (!eq_win || !inv || !db) return;
     
-    WINDOW *win = eq_win->overlay;
-    werase(win);
+//     WINDOW *win = eq_win->overlay;
+//     werase(win);
     
-    // Заголовок
-    mvwprintw(win, 0, 1, "==ЭКИПИРОВКА==");
+//     // Заголовок
+//     mvwprintw(win, 0, 1, "==ЭКИПИРОВКА==");
     
-    // Отображаем каждый слот
-    const char* slot_names[MAX_EQUIPPED] = {
-        "Оружие", "Броня", "Шлем", "Сапоги", "Амулет"
-    };
+//     // Отображаем каждый слот
+//     const char* slot_names[MAX_EQUIPPED] = {
+//         "Оружие", "Броня", "Шлем", "Сапоги", "Амулет"
+//     };
     
-    for (int i = 0; i < MAX_EQUIPPED; i++) {
-        mvwprintw(win, i*2 + 2, 1, "%s:", slot_names[i]);
+//     for (int i = 0; i < MAX_EQUIPPED; i++) {
+//         mvwprintw(win, i*2 + 2, 1, "%s:", slot_names[i]);
         
-        if (inv->equipped[i]) {
-            item_template *item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
-            if (item) {
-                // Выделяем цветом по редкости
-                wattron(win, COLOR_PAIR(2)); // Например, красный для артефактов
-                mvwprintw(win, i*2 + 2, 12, "%-20s", item->name);
-                wattroff(win, COLOR_PAIR(2));
-            }
-        } else {
-            mvwprintw(win, i*2 + 2, 12, "[пусто]");
-        }
-    }
+//         if (inv->equipped[i]) {
+//             item_template *item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
+//             if (item) {
+//                 // Выделяем цветом по редкости
+//                 wattron(win, COLOR_PAIR(2)); // Например, красный для артефактов
+//                 mvwprintw(win, i*2 + 2, 12, "%-20s", item->name);
+//                 wattroff(win, COLOR_PAIR(2));
+//             }
+//         } else {
+//             mvwprintw(win, i*2 + 2, 12, "[пусто]");
+//         }
+//     }
     
-    // Статус инвентаря внизу
-    mvwprintw(win, 12, 1, "Инвентарь: %d/%d", inv->count, inv->max_slots);
+//     // Статус инвентаря внизу
+//     mvwprintw(win, 12, 1, "Инвентарь: %d/%d", inv->count, inv->max_slots);
     
-    wrefresh(win);
-}
+//     wrefresh(win);
+// }
 
-// Всплывающее окно инвентаря
-curw* create_inventory_popup(int height, int width) {
-    int max_y, max_x;
-    getmaxyx(stdscr, max_y, max_x);
+// // Всплывающее окно инвентаря
+// curw* create_inventory_popup(int height, int width) {
+//     int max_y, max_x;
+//     getmaxyx(stdscr, max_y, max_x);
     
-    // Центрируем окно
-    int start_y = (max_y - height) / 2;
-    int start_x = (max_x - width) / 2;
+//     // Центрируем окно
+//     int start_y = (max_y - height) / 2;
+//     int start_x = (max_x - width) / 2;
     
-    curw *inv_popup = make_new_win(start_y, start_x, height, width, "ИНВЕНТАРЬ");
+//     curw *inv_popup = make_new_win(start_y, start_x, height, width, "ИНВЕНТАРЬ");
     
-    // Добавляем подсказки
-    WINDOW *win = inv_popup->overlay;
-    mvwprintw(win, height-4, 2, "↑↓: Выбор  E: Использовать/Надеть");
-    mvwprintw(win, height-3, 2, "D: Выбросить  TAB: Вернуться");
+//     // Добавляем подсказки
+//     WINDOW *win = inv_popup->overlay;
+//     mvwprintw(win, height-4, 2, "↑↓: Выбор  E: Использовать/Надеть");
+//     mvwprintw(win, height-3, 2, "D: Выбросить  TAB: Вернуться");
     
-    return inv_popup;
-}
+//     return inv_popup;
+// }
 
 
-void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state) {
-    if (!inv_popup || !inv || !db) return;
+// void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state) {
+//     if (!inv_popup || !inv || !db) return;
     
-    WINDOW *win = inv_popup->overlay;
-    werase(win);
+//     WINDOW *win = inv_popup->overlay;
+//     werase(win);
     
-    int max_y, max_x;
-    getmaxyx(win, max_y, max_x);
+//     int max_y, max_x;
+//     getmaxyx(win, max_y, max_x);
     
-    // Заголовок с информацией
-    mvwprintw(win, 0, 1, "Предметы [%d/%d]:", inv->count, inv->max_slots);
+//     // Заголовок с информацией
+//     mvwprintw(win, 0, 1, "Предметы [%d/%d]:", inv->count, inv->max_slots);
     
-    inventory_node *current = inv->head;
-    int line = 2;
-    int index = 0;
+//     inventory_node *current = inv->head;
+//     int line = 2;
+//     int index = 0;
     
-    // Отображаем предметы
-    while (current && line < max_y - 5) {
-        item_template *template = itemdb_find_by_id(db, current->item_id);
-        if (!template) {
-            current = current->next;
-            index++;
-            continue;
-        }
+//     // Отображаем предметы
+//     while (current && line < max_y - 5) {
+//         item_template *template = itemdb_find_by_id(db, current->item_id);
+//         if (!template) {
+//             current = current->next;
+//             index++;
+//             continue;
+//         }
         
-        // Выделение выбранного
-        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
-            wattron(win, A_REVERSE);
-        }
+//         // Выделение выбранного
+//         if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+//             wattron(win, A_REVERSE);
+//         }
         
-        // Иконка типа предмета
-        char type_char = (current->type == ITEM_ARTIFACT) ? '⚔' : '⚗';
+//         // Иконка типа предмета
+//         char type_char = (current->type == ITEM_ARTIFACT) ? '⚔' : '⚗';
         
-        // Для артефактов - статус экипировки
-        if (current->type == ITEM_ARTIFACT) {
-            char equip_char = current->state.artifact_state.is_equipped ? '✓' : ' ';
-            mvwprintw(win, line, 2, "%c [%c] %-20s", type_char, equip_char, template->name);
-        } else {
-            mvwprintw(win, line, 2, "%c     %-20s x%d", 
-                     type_char, template->name, current->state.consumable_state.quantity);
-        }
+//         // Для артефактов - статус экипировки
+//         if (current->type == ITEM_ARTIFACT) {
+//             char equip_char = current->state.artifact_state.is_equipped ? '✓' : ' ';
+//             mvwprintw(win, line, 2, "%c [%c] %-20s", type_char, equip_char, template->name);
+//         } else {
+//             mvwprintw(win, line, 2, "%c     %-20s x%d", 
+//                      type_char, template->name, current->state.consumable_state.quantity);
+//         }
         
-        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
-            wattroff(win, A_REVERSE);
-        }
+//         if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+//             wattroff(win, A_REVERSE);
+//         }
         
-        // Отображение описания для выбранного предмета
-        if (index == selected_index && state->current_mode == MODE_INVENTORY) {
-            mvwprintw(win, max_y - 2, 2, "%-60s", template->description);
-        }
+//         // Отображение описания для выбранного предмета
+//         if (index == selected_index && state->current_mode == MODE_INVENTORY) {
+//             mvwprintw(win, max_y - 2, 2, "%-60s", template->description);
+//         }
         
-        current = current->next;
-        line++;
-        index++;
-    }
+//         current = current->next;
+//         line++;
+//         index++;
+//     }
     
-    // Свободные слоты
-    for (int i = inv->count; i < inv->max_slots && line < max_y - 5; i++) {
-        mvwprintw(win, line, 2, "[  Свободный слот  ]");
-        line++;
-    }
+//     // Свободные слоты
+//     for (int i = inv->count; i < inv->max_slots && line < max_y - 5; i++) {
+//         mvwprintw(win, line, 2, "[  Свободный слот  ]");
+//         line++;
+//     }
     
-    wrefresh(win);
-}
+//     wrefresh(win);
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // void display_inventory(inventory *inv, int selected_index) {
 //     if (!inv || !inv->win) return;

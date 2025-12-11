@@ -5,8 +5,8 @@
 #include <panel.h>
 #include <stdlib.h>
 #include <string.h>
-#include "inventory.h"
-#include "equipment.h"
+// #include "inventory.h"
+// #include "equipment.h"
 
 typedef enum {
     MODE_NARRATIVE,  
@@ -32,12 +32,11 @@ typedef struct cursed_window{
 int start_to_work(void);
 curw *make_new_win(int y, int x, int height, int width, char *label);
 void tui_win_label(WINDOW *win, char *label, int pos);
-void display_inventory(inventory *inv, item_database *db, int selected_index);
-curw *create_inventory_popup(int height, int width);
-void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db);
-void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state);
+void about_location(WINDOW *win, char *description);
+// void display_inventory(inventory *inv, item_database *db, int selected_index);
+// curw *create_inventory_popup(int height, int width);
+// void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db);
+// void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state);
 
-// void display_inventory(inventory *inv, int selected_index);
-// void display_inventory_status(WINDOW *win, inventory *inv);
 
 #endif

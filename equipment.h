@@ -17,8 +17,6 @@ typedef enum{
 }consumable_type;
 
 typedef struct{
-    char name[MAX_NAME_LENGTH];
-    char description[MAX_DESC_LENGTH];
     int weight_bonus;
     int magic_bonus;
     int strength_bonus;
@@ -26,34 +24,13 @@ typedef struct{
 }artifact;
 
 typedef struct {
-    char name[MAX_NAME_LENGTH];
-    char description[MAX_DESC_LENGTH];
     consumable_type type;   
     int power;         //сила эффекта
     int duration;
 }consumable;
 
-typedef struct{
-    int id, is_artifact; //артефакт - 1, расходник - 0
-    char name[MAX_NAME_LENGTH];
-    char description[MAX_DESC_LENGTH];
-    union {
-        artifact artifact_template;
-        consumable consumable_template;
-    } template;
-} item_template;
 
-typedef struct {
-    item_template items[MAX_ITEMS];
-    int count;
-} item_database;
 
-void itemdb_init(item_database* db);
-item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id);
-item_template* itemdb_create_consumable(item_database* db, const char* name, const char* desc, consumable_type type, int power, int duration, int id);
-item_template* itemdb_find_by_id(item_database* db, int id);
-item_template* itemdb_find_by_name(item_database* db, const char* name);
-void init_default_items(item_database* db);
 
 
 #endif
