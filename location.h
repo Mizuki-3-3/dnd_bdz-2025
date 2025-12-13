@@ -11,6 +11,7 @@ typedef enum {
 }loc_type;
 
 typedef struct location{
+    char name[MAX_NAME_LENGTH];
     char description[MAX_DESC_LENGTH];
     int id;
     loc_type type;
