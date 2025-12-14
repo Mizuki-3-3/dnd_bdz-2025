@@ -20,6 +20,7 @@ typedef struct {
 
 
 typedef struct Hero{
+    char name[MAX_NAME_LENGTH];
     hero_class type;
     int level;
     int hp;
@@ -36,11 +37,17 @@ typedef struct Hero{
     int exp_to_next;
     consumable_effect active_effects[MAX_CONSUMABLE_EFFECTS];  //какие зельки заюзаны
     int effect_count;
+    int current_location;  // Текущая локация героя
+    int prev_location; 
 } Hero;
 
 Hero* create_hero(const char* name, int class);
 void level_up(Hero *hero, inventory *inv);
 int save_hero(const Hero* hero, const char* name);
 int load_hero(Hero* hero, const char* name);
+void destroy_hero(Hero* hero);
+void heal_hero(Hero *hero, int amount);
+void apply_effect(Hero *hero, consumable_type type, int power, int duration);
+void update_effects(Hero *hero);
 
 #endif

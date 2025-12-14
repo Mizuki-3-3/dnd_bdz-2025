@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Create a map of locations
 location** creat_map(int* loc_count) {
     if (!loc_count || *loc_count <= 0) return NULL;
 
@@ -11,6 +12,7 @@ location** creat_map(int* loc_count) {
     for (int i = 0; i < *loc_count; i++) {
         locations[i] = malloc(sizeof(location));
         if (!locations[i]) {
+            // Clean up previously allocated locations
             for (int j = 0; j < i; j++) {
                 free(locations[j]);
             }
@@ -18,6 +20,7 @@ location** creat_map(int* loc_count) {
             return NULL;
         }
 
+        // Initialize the location
         locations[i]->id = i;
         locations[i]->type = LOC_EMPTY;
         locations[i]->original_type = LOC_EMPTY;
@@ -31,6 +34,7 @@ location** creat_map(int* loc_count) {
     return locations;
 }
 
+// Destroy a map of locations
 void destroy_map(location** locs, int count) {
     if (!locs) return;
 

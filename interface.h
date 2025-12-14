@@ -5,13 +5,19 @@
 #include <panel.h>
 #include <stdlib.h>
 #include <string.h>
-// #include "inventory.h"
-// #include "equipment.h"
+#include "inventory.h"
+#include "equipment.h"
+#include "hero.h"
+
+// Объявления внешних переменных
+extern item_database global_db;
+extern curw *narrative_win;
 
 typedef enum {
     MODE_NARRATIVE,  
     MODE_INVENTORY,
-    MODE_MENU    
+    MODE_MENU,
+    MODE_COMBAT
 } game_mode;
 
 typedef struct {
@@ -21,22 +27,21 @@ typedef struct {
     int quit_flag;
 } game_state;
 
-
-typedef struct cursed_window{
+typedef struct cursed_window {
     WINDOW *background;
     WINDOW *decoration;
     WINDOW *overlay;
     PANEL *panel;
-}curw;
+} curw;
 
 int start_to_work(void);
 curw *make_new_win(int y, int x, int height, int width, char *label);
 void tui_win_label(WINDOW *win, char *label, int pos);
-void about_location(WINDOW *win, char *description);
-// void display_inventory(inventory *inv, item_database *db, int selected_index);
-// curw *create_inventory_popup(int height, int width);
-// void draw_equipment_panel(curw *eq_win, inventory *inv, item_database *db);
-// void draw_inventory_popup(curw *inv_popup, inventory *inv, item_database *db, int selected_index, game_state *state);
 
+// Функции для игры
+void create_game_windows(void);
+void display_hero_stats(WINDOW *win, Hero *hero);
+char show_item_menu(WINDOW *win, inventory_node *node, item_template *item);
+void show_location_description(int location_id);
 
 #endif

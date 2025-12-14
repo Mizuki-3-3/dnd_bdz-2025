@@ -4,12 +4,11 @@
 #include <string.h>
 
 #define MAX_NAME_LENGTH  32
-#define MAX_DESC_LENGTH 70
 #define MAX_ITEMS 100
 
 typedef enum{
     FOOD,
-    HELTH_POT,
+    HEALTH_POT,
     MANA_POT,   //ВОССТАНОВЛЕНИЕ МАНЫ
     STRENGTH_POT,
     DEXTERITY_POT,
@@ -29,7 +28,10 @@ typedef struct {
     int duration;
 }consumable;
 
-
+const char* get_consumable_name(consumable_type type);
+const char* get_consumable_description(consumable_type type);
+int get_artifact_value(artifact* art);
+int compare_artifacts(artifact* a, artifact* b);
 
 
 

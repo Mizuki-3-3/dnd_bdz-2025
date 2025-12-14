@@ -2,6 +2,7 @@
 #define INVENTORY_H
 
 #include "equipment.h"
+#include "database.h"
 #include <curses.h>
 
 typedef struct Hero Hero;
@@ -49,21 +50,17 @@ typedef struct {
 
 inventory* create_inventory();
 void inventory_update_capacity(inventory *inv, int player_level);
-
 int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int quantity);
-int inventory_add_artifact(inventory *inv, int artifact_id);
-int inventory_add_consumable(inventory *inv, int consumable_id, int quantity);
 
-int inventory_remove_item(inventory *inv, inventory_node *node_to_remove);
 inventory_node* inventory_get_node_at_index(inventory *inv, int index);
-
 int inventory_equip_artifact(inventory *inv, inventory_node *node, equipment_slot slot);
 int inventory_unequip_artifact(inventory *inv, equipment_slot slot);
-
 void free_inventory(inventory *inv);
 void display_inventory(inventory *inv, item_database *db, int selected_index);
-int player_use_item(Hero *hero, inventory_node *node, item_database *db);
 
-
+// Функции использования предметов
+int inventory_use_consumable(Hero *hero, inventory_node *node, item_database *db);
+void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db);
+int inventory_remove_item(inventory *inv, inventory_node *node_to_remove);
 #endif
 

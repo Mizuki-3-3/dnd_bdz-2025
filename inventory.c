@@ -1,9 +1,7 @@
 #include "inventory.h"
-#include "database.h"
+#include "hero.h"
 #include <stdlib.h>
-
-extern item_database global_itemdb;
-
+#include <string.h>
 
 inventory* create_inventory(void) {
     inventory *inv = malloc(sizeof(inventory));
@@ -16,7 +14,7 @@ inventory* create_inventory(void) {
     inv->win = NULL;
     
     for (int i = 0; i < MAX_EQUIPPED; i++) {
-        inv->equipped[i] = NULL;     //сначала инвентарь пустой
+        inv->equipped[i] = NULL;     // сначала инвентарь пустой
     }
     
     return inv;
@@ -26,7 +24,6 @@ void inventory_update_capacity(inventory *inv, int player_level) {
     if (!inv) return;
     inv->max_slots = BASE_CAPACITY + ((player_level-1) * CAPACITY_PER_LEVEL);
 }
-
 
 int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int quantity) {
     if (!inv || !db) {
@@ -44,19 +41,28 @@ int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int
 
     inventory_node *new_node = malloc(sizeof(inventory_node));
     if (!new_node) {
-        return 0;  // память не выделилась подэлемент в инвентаре
+        return 0;  // память не выделилась под элемент в инвентаре
     }
     
     new_node->item_id = item_id;
     new_node->next = NULL;
 
-    if (template->id>200) {
+    // Определяем тип предмета по ID
+    if (item_id >= 200 && item_id < 300) {
+        // Артефакты: 200-299
         new_node->type = ITEM_ARTIFACT;
         new_node->state.artifact_state.is_equipped = 0;  // Не надет
-    } else {
+    } else if (item_id >= 100 && item_id < 200) {
+        // Расходники: 100-199
         new_node->type = ITEM_CONSUMABLE;
         new_node->state.consumable_state.quantity = quantity;
+    } else {
+        // Монстры (300-399) и локации (400-499) не должны быть в инвентаре
+        free(new_node);
+        return 0;
     }
+    
+    // Добавляем в список
     if (!inv->head) {
         inv->head = new_node;
         inv->tail = new_node;
@@ -131,12 +137,12 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
 }
 
 inventory_node* inventory_get_node_at_index(inventory *inv, int index) {
-    if (!inv || index < 0 || index > inv->count) {
+    if (!inv || index < 0 || index >= inv->count) {
         return NULL;
     }
     
     inventory_node *current = inv->head;
-    for (int i = 1; (i < index) && current; i++) {
+    for (int i = 0; i < index && current; i++) {
         current = current->next;
     }
     
@@ -216,14 +222,18 @@ void display_inventory(inventory *inv, item_database *db, int selected_index) {
             wattron(inv->win, A_REVERSE);
         }
         
-        // Отображение предмета
+        // Отображение предмета с ограничением длины
+        char display[80];
         if (current->type == ITEM_ARTIFACT) {
             char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
-            mvwprintw(inv->win, line, 2, "%c %s", equipped, template->name);
+            snprintf(display, sizeof(display), "%c %s", equipped, template->name);
         } else {
-            mvwprintw(inv->win, line, 2, "  %s x%d", 
-                     template->name, current->state.consumable_state.quantity);
+            snprintf(display, sizeof(display), "  %s x%d", 
+                    template->name, current->state.consumable_state.quantity);
         }
+        display[sizeof(display) - 1] = '\0';
+        
+        mvwprintw(inv->win, line, 2, "%s", display);
         
         if (index == selected_index) {
             wattroff(inv->win, A_REVERSE);
@@ -242,3 +252,98 @@ void display_inventory(inventory *inv, item_database *db, int selected_index) {
     
     wrefresh(inv->win);
 }
+
+int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, item_database *db) {
+    if (!hero || !inv || !node || !db || node->type != ITEM_CONSUMABLE) return 0;
+    
+    item_template *item = itemdb_find_by_id(db, node->item_id);
+    if (!item) return 0;
+    
+    consumable *cons = &item->template.consumable_template;
+    
+    switch (cons->type) {
+        case HEALTH_POT:
+            hero->hp += cons->power;
+            if (hero->hp > hero->max_hp) hero->hp = hero->max_hp;
+            break;
+            
+        case MANA_POT:
+            hero->mp += cons->power;
+            if (hero->mp > hero->max_mp) hero->mp = hero->max_mp;
+            break;
+            
+        case STRENGTH_POT:
+        case DEXTERITY_POT:
+        case MAGIC_POT:
+            // Добавляем временный эффект
+            if (hero->effect_count < MAX_CONSUMABLE_EFFECTS) {
+                hero->active_effects[hero->effect_count].type = cons->type;
+                hero->active_effects[hero->effect_count].power = cons->power;
+                hero->active_effects[hero->effect_count].remaining_duration = cons->duration;
+                hero->effect_count++;
+                
+                // Применяем эффект немедленно
+                switch (cons->type) {
+                    case STRENGTH_POT: hero->strength += cons->power; break;
+                    case DEXTERITY_POT: hero->dexterity += cons->power; break;
+                    case MAGIC_POT: hero->magic += cons->power; break;
+                    default: break;
+                }
+            }
+            break;
+            
+        default:
+            return 0;
+    }
+    
+    // Уменьшаем количество
+    node->state.consumable_state.quantity--;
+    if (node->state.consumable_state.quantity <= 0) {
+        // Удаляем предмет, если он закончился
+        inventory_remove_item(inv, node);
+    }
+    
+    return 1;
+}
+
+
+// Расчет статов из экипировки
+void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db) {
+    if (!hero || !inv || !db) return;
+    
+    // Сбрасываем статы к базовым
+    hero->strength = hero->base_strength;
+    hero->dexterity = hero->base_dexterity;
+    hero->magic = hero->base_magic;
+    
+    // Добавляем бонусы от экипированных предметов
+    for (int i = 0; i < MAX_EQUIPPED; i++) {
+        if (inv->equipped[i]) {
+            item_template *item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
+            if (item && item->id >= 200 && item->id < 300) { // Это артефакт
+                artifact *art = &item->template.artifact_template;
+                hero->strength += art->strength_bonus;
+                hero->dexterity += art->dexterity_bonus;
+                hero->magic += art->magic_bonus;
+            }
+        }
+    }
+    
+    // Добавляем бонусы от активных эффектов
+    for (int i = 0; i < hero->effect_count; i++) {
+        switch (hero->active_effects[i].type) {
+            case STRENGTH_POT:
+                hero->strength += hero->active_effects[i].power;
+                break;
+            case DEXTERITY_POT:
+                hero->dexterity += hero->active_effects[i].power;
+                break;
+            case MAGIC_POT:
+                hero->magic += hero->active_effects[i].power;
+                break;
+            default:
+                break;
+        }
+    }
+}
+

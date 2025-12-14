@@ -8,6 +8,9 @@ Hero* create_hero(const char* name, int class) {
 
     Hero* h = malloc(sizeof(Hero));
     if (!h) return NULL;
+    strncpy(h->name, name, MAX_NAME_LENGTH - 1);
+    h->name[MAX_NAME_LENGTH - 1] = '\0';
+
     switch (class){
         case 1:
             h->level = 1;
@@ -132,4 +135,77 @@ void level_up(Hero *hero, inventory *inv){
         default: printf("Выбор некорректен, попробуйте ещё раз\n"); level_up(hero, inv);
     }
     printf("Характеристики обновлены!");
+}
+
+// hero.c - добавляем недостающие функции
+
+// ... существующий код ...
+
+// Лечение героя
+void heal_hero(Hero *hero, int amount) {
+    if (!hero) return;
+    
+    hero->hp += amount;
+    if (hero->hp > hero->max_hp) {
+        hero->hp = hero->max_hp;
+    }
+}
+
+// Применение эффекта
+void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
+    if (!hero || hero->effect_count >= MAX_CONSUMABLE_EFFECTS) return;
+    
+    hero->active_effects[hero->effect_count].type = type;
+    hero->active_effects[hero->effect_count].power = power;
+    hero->active_effects[hero->effect_count].remaining_duration = duration;
+    hero->effect_count++;
+    
+    // Немедленно применяем эффект
+    switch (type) {
+        case STRENGTH_POT:
+            hero->strength += power;
+            break;
+        case DEXTERITY_POT:
+            hero->dexterity += power;
+            break;
+        case MAGIC_POT:
+            hero->magic += power;
+            break;
+        default:
+            break;
+    }
+}
+
+// Обновление эффектов (уменьшение длительности)
+void update_effects(Hero *hero) {
+    if (!hero) return;
+    
+    for (int i = 0; i < hero->effect_count; i++) {
+        hero->active_effects[i].remaining_duration--;
+        
+        // Если эффект закончился, убираем его
+        if (hero->active_effects[i].remaining_duration <= 0) {
+            // Убираем бонус
+            switch (hero->active_effects[i].type) {
+                case STRENGTH_POT:
+                    hero->strength -= hero->active_effects[i].power;
+                    break;
+                case DEXTERITY_POT:
+                    hero->dexterity -= hero->active_effects[i].power;
+                    break;
+                case MAGIC_POT:
+                    hero->magic -= hero->active_effects[i].power;
+                    break;
+                default:
+                    break;
+            }
+            
+            // Сдвигаем остальные эффекты
+            for (int j = i; j < hero->effect_count - 1; j++) {
+                hero->active_effects[j] = hero->active_effects[j + 1];
+            }
+            hero->effect_count--;
+            i--; // Проверяем текущую позицию снова
+        }
+    }
 }

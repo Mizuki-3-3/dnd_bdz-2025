@@ -7,7 +7,7 @@
 
 
 #define MAX_NAME_LENGTH  32
-#define MAX_DESC_LENGTH 70
+#define MAX_DESC_LENGTH 300
 #define MAX_ITEMS 100
 
 typedef struct{
@@ -36,6 +36,8 @@ item_template* itemdb_create_location(item_database* db, const char* name, const
 item_template* itemdb_create_monster(item_database* db, const char* name, int level, int id);
 
 void init_default_items(item_database* db);
-
+int get_location_id_by_index(int index);
+int get_monster_id_by_location(int location_id);
+const char* get_location_name(int location_id);
 
 #endif
