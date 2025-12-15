@@ -30,7 +30,7 @@ int choose_class(WINDOW *win);
 void move_to_location(int new_location);
 void handle_location_action(int location_id);
 void show_location_description(int location_id);
-void show_current_location(void);
+void show_current_location(item_template *loc);
 
 // Функции боя
 void start_combat(int monster_id);
@@ -43,13 +43,13 @@ void take_treasure(int location_id);
 // Функции инвентаря
 void open_inventory(void);
 void use_item_from_inventory(int index);
-void equip_item_from_inventory(int index);
 void drop_item_from_inventory(int index);
 
 int roll_dice(int sides);
 int calculate_damage(int base, int dice_roll);
 void check_level_up(void);
 void game_over(void);
-void victory(void);
+int get_location_connection(int from, int to);
+const char* get_location_name_by_id(int id);
 
 #endif

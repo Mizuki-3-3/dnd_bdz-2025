@@ -10,7 +10,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-// Исправляем: curw используется в interface.h
 curw *narrative_win = NULL;  
 curw *inventory_win = NULL;
 curw *equipment_win = NULL;
@@ -20,7 +19,6 @@ inventory *player_inv = NULL;
 game_state state;
 int current_location = 0;
 int prev_location = 0;
-
 
 static int location_connections[7][7] = {// Матрица смежности локаций 
     {0, 1, 1, 0, 0, 0, 0},  // 0 - Берег реки
@@ -42,7 +40,7 @@ static const char* location_names[7] = {
     "Лабаз в корнях"
 };
 
-static void show_current_location(void);
+static void show_current_location(item_template *loc);
 static void combat_with_monster(int monster_id);
 static void take_treasure(int location_id);
 static void handle_location_action(int location_id);
@@ -57,22 +55,24 @@ static void game_over(void);
 static void victory_screen(void);
 static void check_level_up(void);
 static void move_to_location(int new_location);
-static void show_location_description(int location_id);
+void show_location_description(int location_id);
 
-// Функция для создания окон
+// Новые функции для управления окном инвентаря
+static void create_inventory_window(void);
+static void destroy_inventory_window(void);
+
 void create_game_windows(void) {
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     
-    // Окно повествования (2/3 экрана)
-    narrative_win = make_new_win(1, 1, max_y - 2, (max_x * 2) / 3, "==Dungeon==");
+    // Окно повествования - ВЕСЬ ЭКРАН
+    narrative_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Dungeon==");
     
-    // Окно инвентаря (1/3 экрана справа)
-    inventory_win = make_new_win(1, (max_x * 2) / 3 + 2, max_y - 2, max_x / 3 - 3, "ИНВЕНТАРЬ");
+    // Окно инвентаря создается только при открытии инвентаря
+    inventory_win = NULL;
     
-    // Назначаем окно инвентарю
-    if (player_inv && inventory_win) {
-        player_inv->win = inventory_win->overlay;
+    if (player_inv) {
+        player_inv->win = NULL;
     }
 }
 
@@ -80,31 +80,43 @@ int choose_class(WINDOW *win) {
     if (!win) return 1;
     
     werase(win);
-    mvwprintw(win, 1, 1, "Выберите класс персонажа:");
-    mvwprintw(win, 3, 1, "1. Маг");
-    mvwprintw(win, 4, 1, "   - Высокий урон магией");
-    mvwprintw(win, 5, 1, "   - Меньше здоровья");
     
-    mvwprintw(win, 7, 1, "2. Воин");
-    mvwprintw(win, 8, 1, "   - Высокое здоровье и сила");
-    mvwprintw(win, 9, 1, "   - Меньше маны");
+    mvwprintw(win, 1, 2, "Выберите класс персонажа:");
+    mvwprintw(win, 3, 2, "1. Маг");
+    mvwprintw(win, 4, 2, "   - Высокий урон магией");
+    mvwprintw(win, 5, 2, "   - Меньше здоровья");
     
-    mvwprintw(win, 11, 1, "3. Плут");
-    mvwprintw(win, 12, 1, "   - Высокая ловкость");
-    mvwprintw(win, 13, 1, "   - Критические удары");
+    mvwprintw(win, 7, 2, "2. Воин");
+    mvwprintw(win, 8, 2, "   - Высокое здоровье и сила");
+    mvwprintw(win, 9, 2, "   - Меньше маны");
     
-    mvwprintw(win, 15, 1, "Выбор (1-3): ");
+    mvwprintw(win, 11, 2, "3. Плут");
+    mvwprintw(win, 12, 2, "   - Высокая ловкость");
+    mvwprintw(win, 13, 2, "   - Критические удары");
+    
+    mvwprintw(win, 15, 2, "Выбор (1-3): ");
     wrefresh(win);
     
     int choice;
     while (1) {
         choice = getch() - '0';
-        if (choice >= 1 && choice <= 3) break;
+        
+        if (choice >= 1 && choice <= 3) {
+            break;
+        } else {
+            mvwprintw(win, 16, 2, "Неверный выбор! Введите 1, 2 или 3");
+            mvwprintw(win, 15, 14, "   ");  // Очищаем область ввода
+            wmove(win, 15, 14);  // Возвращаем курсор на место ввода
+            wrefresh(win);
+        }
     }
+    
+    werase(win);
+    wrefresh(win);
+    
     return choice;
 }
 
-// Функция инициализации новой игры
 void init_new_game(const char *name, int class) {
     player = create_hero(name, class);
     if (!player) return;
@@ -121,17 +133,16 @@ void init_new_game(const char *name, int class) {
     
     // Даём стартовые предметы
     inventory_add_item_by_id(player_inv, &global_db, 201, 1); // Кинжал
-    inventory_add_item_by_id(player_inv, &global_db, 103, 2); // 2 аптечки
+    inventory_add_item_by_id(player_inv, &global_db, 202, 1);
+    inventory_add_item_by_id(player_inv, &global_db, 203, 1);
     
     current_location = 0;
     prev_location = 0;
     
-    // Устанавливаем локацию героя
     player->current_location = current_location;
     player->prev_location = prev_location;
 }
 
-// Функция загрузки сохранения
 int load_game(const char *name) {
     char filename[256];
     snprintf(filename, sizeof(filename), "%s.save", name);
@@ -150,7 +161,7 @@ int load_game(const char *name) {
     memcpy(player, &temp_hero, sizeof(Hero));
     
     player_inv = create_inventory();
-    // TODO: загрузить инвентарь из отдельного файла
+    // позже загрузить инвентарь из отдельного файла
     
     current_location = player->current_location;
     prev_location = player->prev_location;
@@ -158,43 +169,50 @@ int load_game(const char *name) {
     return 1;
 }
 
-void show_current_location(void) {
+void show_current_location(item_template *loc) {
     if (!narrative_win || !narrative_win->overlay) return;
     
     WINDOW *win = narrative_win->overlay;
     werase(win);
     
-    // Ищем описание локации в базе данных
-    item_template *loc = itemdb_find_by_id(&global_db, 400 + current_location);
-    
     if (loc) {
-        mvwprintw(win, 1, 2, "=== %s ===", location_names[current_location]);
+        // Обновляем заголовок окна с названием локации
+        update_window_titles(loc);
         
-        // Выводим описание с переносами
-        char desc_copy[MAX_DESC_LENGTH];
-        strncpy(desc_copy, loc->template.location_template.description, MAX_DESC_LENGTH - 1);
-        desc_copy[MAX_DESC_LENGTH - 1] = '\0';
+        const char *description = loc->template.location_template.description;
         
-        int line = 3;
+        int line = 1;
         int col = 2;
-        int max_x = getmaxx(win) - 3;
+        int max_x = getmaxx(win) - 4; 
         
-        char *word = strtok(desc_copy, " ");
-        while (word && line < getmaxy(win) - 10) {
-            int word_len = strlen(word);
-            
-            if (col + word_len + 1 > max_x) {
+        // Простой вывод текста с обработкой переноса строк
+        int i = 0;
+        int start = 0;
+        
+        while (description[i] != '\0' && line < getmaxy(win) - 15) {
+            if (description[i] == '\n' || (i - start >= max_x && description[i] == ' ')) {
+                // Выводим строку
+                mvwaddnstr(win, line, 2, description + start, i - start);
                 line++;
-                col = 2;
+                start = i + 1;
+                
+                if (description[i] == '\n') {
+                    // Если это явный перенос строки, пропускаем
+                    while (description[start] == ' ' || description[start] == '\t') {
+                        start++;
+                    }
+                    i = start - 1; // i будет увеличен в конце цикла
+                }
             }
-            
-            mvwprintw(win, line, col, "%s ", word);
-            col += word_len + 1;
-            
-            word = strtok(NULL, " ");
+            i++;
         }
         
-        // Показываем возможные переходы
+        // Выводим последнюю строку, если осталась
+        if (start < i && line < getmaxy(win) - 15) {
+            mvwaddnstr(win, line, 2, description + start, i - start);
+            line++;
+        }
+        
         line += 2;
         mvwprintw(win, line++, 2, "Доступные пути:");
         
@@ -206,28 +224,19 @@ void show_current_location(void) {
             }
         }
         
-        // Показываем тип локации и действия
         line += 2;
-        mvwprintw(win, line++, 2, "Тип: ");
         switch (loc->template.location_template.type) {
-            case LOC_EMPTY:
-                mvwprintw(win, line - 1, 7, "Пустая");
-                break;
             case LOC_MONSTER:
-                mvwprintw(win, line - 1, 7, "Монстр!");
                 mvwprintw(win, line++, 2, "A - Атаковать");
                 mvwprintw(win, line++, 2, "R - Отступить");
                 break;
             case LOC_TREASURE:
-                mvwprintw(win, line - 1, 7, "Сокровище");
                 mvwprintw(win, line++, 2, "T - Взять");
                 break;
         }
-        
         line += 2;
         mvwprintw(win, line++, 2, "I - Инвентарь  Q - Выход");
     }
-    
     wrefresh(win);
 }
 
@@ -275,76 +284,77 @@ void game_loop(void) {
     itemdb_init(&global_db);
     init_default_items(&global_db);
     
+    create_game_windows();
     // Окно ввода имени
     echo();
-    char player_name[32];
+    char player_name[MAX_NAME_LENGTH];
     memset(player_name, 0, sizeof(player_name));
     
-    WINDOW *input_win = newwin(5, 50, 10, 15);
-    box(input_win, 0, 0);
-    mvwprintw(input_win, 1, 2, "Введите имя героя:");
-    mvwprintw(input_win, 2, 2, "> ");
-    wrefresh(input_win);
-    wgetnstr(input_win, player_name, 31);
+    if (narrative_win && narrative_win->overlay) {
+        werase(narrative_win->overlay);
+        mvwprintw(narrative_win->overlay, 1, 2, "Введите имя героя:");
+        mvwprintw(narrative_win->overlay, 2, 2, "> ");
+        wrefresh(narrative_win->overlay);
+        wgetnstr(narrative_win->overlay, player_name, MAX_NAME_LENGTH-1);
+    }
     noecho();
-    delwin(input_win);
-    
-    // Проверяем сохранение
+
     int load_result = 0;
     char save_filename[256];
     snprintf(save_filename, sizeof(save_filename), "%s.save", player_name);
-    
+
     FILE *save_file = fopen(save_filename, "rb");
     if (save_file) {
         fclose(save_file);
         
-        // Спросить, загрузить ли сохранение
-        WINDOW *load_win = newwin(5, 50, 10, 15);
-        box(load_win, 0, 0);
-        mvwprintw(load_win, 1, 2, "Найдено сохранение для %s", player_name);
-        mvwprintw(load_win, 2, 2, "Загрузить? (Y/N)");
-        wrefresh(load_win);
-        
-        int ch = getch();
-        if (ch == 'y' || ch == 'Y') {
-            load_result = load_game(player_name);
-        }
-        delwin(load_win);
-    }
-    
-    if (!load_result) {
-        // Новая игра
-        int class = choose_class(stdscr);
-        init_new_game(player_name, class);
-        
-        // Показываем вступление
         if (narrative_win && narrative_win->overlay) {
+            WINDOW *win = narrative_win->overlay;
+            werase(win);
+            mvwprintw(win, 1, 2, "Найдено сохранение для %s", player_name);
+            mvwprintw(win, 2, 2, "Загрузить? (Y/N)");
+            wrefresh(win);
+            
+            int ch = getch();
+            if (ch == 'y' || ch == 'Y') {
+                load_result = load_game(player_name);
+            }
+        }
+    }
+    if (!load_result) {
+        // Новая игра - выбор класса
+        if (narrative_win && narrative_win->overlay) {
+            int class = choose_class(narrative_win->overlay);
+            init_new_game(player_name, class);
+            // Показываем вступление
             chapter1(narrative_win->overlay);
         }
     }
-    
-    create_game_windows();
-   
+
+    update_panels();
+    doupdate();
     state.current_mode = MODE_NARRATIVE;
     state.previous_mode = MODE_NARRATIVE;
     state.inventory_selected_index = 0;
     state.quit_flag = 0;
+    item_template *loc = itemdb_find_by_id(&global_db, 400);
+    
+    // Показать начальную локацию
+    if (loc) {
+        update_window_titles(loc);
+        show_current_location(loc);
+    }
     
     while (!state.quit_flag) {
         switch (state.current_mode) {
             case MODE_NARRATIVE:
-                show_current_location();
+                loc = itemdb_find_by_id(&global_db, 400+current_location);
+                show_current_location(loc);
                 
                 // Обработка ввода
                 int ch = getch();
                 ch = tolower(ch);
                 
                 switch (ch) {
-                    case 'i':
-                        state.current_mode = MODE_INVENTORY;
-                        state.previous_mode = MODE_NARRATIVE;
-                        break;
-                        
                     case 'q':
                         state.quit_flag = 1;
                         break;
@@ -374,18 +384,19 @@ void game_loop(void) {
                         break;
                         
                     case 'r':
-                        // Отступление
-                        current_location = prev_location;
+                        if (prev_location >= 0 && prev_location < 7) {
+                            move_to_location(prev_location);
+                        }
+                        break;
+                        
+                    case 'i':
+                        // Открыть/закрыть инвентарь
+                        open_inventory();
                         break;
                 }
                 break;
                 
-            case MODE_INVENTORY:
-                open_inventory();
-                break;
-                
             case MODE_COMBAT:
-                // Бой уже обрабатывается в start_combat
                 break;
         }
         
@@ -400,6 +411,11 @@ void game_loop(void) {
     }
     if (player_inv) {
         free_inventory(player_inv);
+    }
+    
+    // Уничтожаем окно инвентаря если оно существует
+    if (inventory_win) {
+        destroy_inventory_window();
     }
 }
 
@@ -478,6 +494,12 @@ void move_to_location(int new_location) {
         player->prev_location = prev_location;
     }
     
+    // Обновляем заголовок окна с названием новой локации
+    item_template *loc = itemdb_find_by_id(&global_db, 400 + current_location);
+    if (loc) {
+        update_window_titles(loc);
+    }
+    
     // Обрабатываем события в новой локации
     handle_location_action(current_location);
 }
@@ -502,6 +524,11 @@ void handle_location_action(int location_id) {
 }
 
 void start_combat(int location_id) {
+    // Если окно инвентаря открыто - закрываем его
+    if (inventory_win) {
+        destroy_inventory_window();
+    }
+    
     // Создаем монстра для этой локации
     Monster *monster = create_monster(location_id);
     if (!monster || !narrative_win || !narrative_win->overlay) return;
@@ -537,16 +564,7 @@ void start_combat(int location_id) {
                 if (monster->health > 0) {
                     monster_attack_player(monster);
                 }
-                break;
-                
-            case 'i':
-                // Временно открываем инвентарь
-                state.previous_mode = MODE_COMBAT;
-                state.current_mode = MODE_INVENTORY;
-                open_inventory();
-                state.current_mode = MODE_COMBAT;
-                break;
-                
+                break; 
             case 'r':
                 // Отступление
                 mvwprintw(win, 11, 2, "Вы отступаете!");
@@ -610,7 +628,7 @@ void monster_attack_player(Monster* monster) {
     if (player->hp < 0) player->hp = 0;
     
     mvwprintw(win, 14, 2, "Монстр бросает кубик: %d", dice_roll);
-    mvwprintw(win, 15, 2, "Монстр наносит %d урона!", damage);
+    mvwprintw(win, 15, 2, "Монстр наносите %d урона!", damage);
     wrefresh(win);
     napms(1000);
 }
@@ -640,18 +658,77 @@ void end_combat(int victory) {
     getch();
 }
 
+// Создание окна инвентаря
+static void create_inventory_window(void) {
+    if (inventory_win) {
+        return;
+    }
+    
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    
+    // Создаем окно инвентаря в правой половине экрана
+    inventory_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Inventory==");
+    
+    if (player_inv && inventory_win) {
+        player_inv->win = inventory_win->overlay;
+    }
+}
+
+static void destroy_inventory_window(void) {
+    if (!inventory_win) return;
+    
+    // Удаляем панель
+    if (inventory_win->panel) {
+        del_panel(inventory_win->panel);
+    }
+    
+    // Удаляем окна
+    if (inventory_win->overlay) {
+        delwin(inventory_win->overlay);
+    }
+    if (inventory_win->decoration) {
+        delwin(inventory_win->decoration);
+    }
+    if (inventory_win->background) {
+        delwin(inventory_win->background);
+    }
+    
+    // Освобождаем память структуры
+    free(inventory_win);
+    inventory_win = NULL;
+    
+    // Устанавливаем player_inv->win в NULL
+    if (player_inv) {
+        player_inv->win = NULL;
+    }
+    
+    // Обновляем панели
+    update_panels();
+    doupdate();
+}
+
 void open_inventory(void) {
     if (!player_inv) return;
     
-    state.current_mode = MODE_INVENTORY;
-    state.inventory_selected_index = 0;
+    // Если окно инвентаря уже существует - закрываем его
+    if (inventory_win) {
+        destroy_inventory_window();
+        return;
+    }
     
-    while (state.current_mode == MODE_INVENTORY) {
-        display_inventory(player_inv, &global_db, state.inventory_selected_index);
-        
+    // Создаем окно инвентаря
+    create_inventory_window();
+    if (!inventory_win) return;
+    
+    state.inventory_selected_index = 0;
+    int inventory_open = 1;
+    
+    while (inventory_open) {
+        display_inventory(player_inv, &global_db, player, state.inventory_selected_index);
         int ch = getch();
         ch = tolower(ch);
-        
+            
         switch (ch) {
             case KEY_UP:
                 if (state.inventory_selected_index > 0)
@@ -667,17 +744,18 @@ void open_inventory(void) {
             case 'u':
                 use_item_from_inventory(state.inventory_selected_index);
                 break;
-                
+                    
             case 'd':
                 drop_item_from_inventory(state.inventory_selected_index);
                 break;
-                
+                    
             case 27: // ESC
             case 'i':
-                state.current_mode = state.previous_mode;
+                inventory_open = 0;
                 break;
         }
     }
+    destroy_inventory_window();
 }
 
 void use_item_from_inventory(int index) {
@@ -709,11 +787,9 @@ void use_item_from_inventory(int index) {
             }
         }
     } else {
-        // Использование расходника
         inventory_use_consumable(player, player_inv, node, &global_db);
     }
     
-    // Пересчитываем характеристики
     calculate_stats_from_equipment(player, player_inv, &global_db);
 }
 
@@ -771,6 +847,39 @@ void save_game(void) {
     }
 }
 
-void show_location_description(int location_id) {
-    // Уже реализовано в show_current_location
+int get_location_connection(int from, int to) {
+    if (from >= 0 && from < 7 && to >= 0 && to < 7) {
+        return location_connections[from][to];
+    }
+    return 0;
+}
+
+const char* get_location_name_by_id(int id) {
+    if (id >= 0 && id < 7) {
+        return location_names[id];
+    }
+    return "Неизвестная локация";
+}
+
+void update_window_titles(item_template *loc) {
+    if (!narrative_win) return;
+    
+    // Обновляем заголовок основного окна (название локации)
+    WINDOW *decoration = narrative_win->decoration;
+    werase(decoration);
+    box(decoration, 0, 0);
+    
+    // Форматируем заголовок
+    char title[100];
+    if (loc && loc->name) {
+        snprintf(title, sizeof(title), "== %s ==", loc->name);
+    } else {
+        snprintf(title, sizeof(title), "==Dungeon==");
+    }
+    
+    tui_win_label(decoration, title, 0);
+    
+    // Обновляем панели
+    update_panels();
+    doupdate();
 }

@@ -24,12 +24,5 @@ typedef struct location{
 
 location** creat_map(int* loc_count);
 void destroy_map(location** locs, int count);
-void init_map_connections(location** locs, int count);
-int can_move_to(location** locs, int from, int to);
-void get_available_exits(location** locs, int current, int exits[], int *count);
-void change_location_type(location** locs, int loc_id, loc_type new_type);
-extern const char* location_names[MAX_LOCATIONS];
-extern int location_connections[MAX_LOCATIONS][MAX_LOCATIONS];
-
 
 #endif

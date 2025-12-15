@@ -2,9 +2,9 @@ CC = gcc
 
 INC="-IC:\Users\kamila\Desktop\tools\PDCurses-3.9"
 LDD="-LC:\Users\kamila\Desktop\tools\PDCurses-3.9\wincon"
-LDFLAGS = -lpdcurses -lpanel
+LDFLAGS = -lpdcurses
 
-CFLAGS = -Wall -mconsole $(INC)
+CFLAGS = -Wall -Wextra -O2 -mconsole $(INC) -D_UNICODE -DUNICODE -DPDC_FORCE_UTF8
 SRCS = main.c game.c interface.c history.c inventory.c hero.c database.c location.c monster.c
 OBJS = $(SRCS:.c=.o)
 

@@ -61,6 +61,7 @@ item_template* itemdb_create_monster(item_database* db, const char* name, int le
     m->template.monster_template.loot_id[0] = loot1;
     m->template.monster_template.loot_id[1] = loot2;
     m->template.monster_template.loot_id[2] = loot3;
+    db->count++;
     return m;
 }
 
@@ -72,6 +73,7 @@ item_template* itemdb_create_location(item_database* db, const char* name, const
     strncpy(loc->template.location_template.description, desc, MAX_DESC_LENGTH - 1);
     loc->template.location_template.exit_count = exits_count;
     loc->template.location_template.type = loc->template.location_template.original_type = type;
+    db->count++;
     return loc;
 }
 

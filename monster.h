@@ -2,6 +2,7 @@
 #define MONSTER_H
 
 #include "inventory.h"
+#include <stdlib.h>
 
 #define MAX_NAME_LENGTH  32
 #define MAX_LOOT_COUNT 3

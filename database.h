@@ -22,7 +22,7 @@ typedef struct{
     }template;
 } item_template;
 
-typedef struct {
+typedef struct item_database{
     item_template items[MAX_ITEMS];
     int count;
 } item_database;
@@ -31,13 +31,7 @@ void itemdb_init(item_database* db);
 item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id);
 item_template* itemdb_create_consumable(item_database* db, const char* name, const char* desc, consumable_type type, int power, int duration, int id);
 item_template* itemdb_find_by_id(item_database* db, int id);
-item_template* itemdb_find_by_name(item_database* db, const char* name);
 item_template* itemdb_create_location(item_database* db, const char* name, const char* desc, int exits_count, loc_type type, int id);
-item_template* itemdb_create_monster(item_database* db, const char* name, int level, int id);
-
 void init_default_items(item_database* db);
-int get_location_id_by_index(int index);
-int get_monster_id_by_location(int location_id);
-const char* get_location_name(int location_id);
 
 #endif

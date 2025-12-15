@@ -1,4 +1,5 @@
 #include "inventory.h"
+#include"database.h"
 #include "hero.h"
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +28,7 @@ void inventory_update_capacity(inventory *inv, int player_level) {
 
 int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int quantity) {
     if (!inv || !db) {
-        return 0;  // проверка выделения памяти под инвентарь и под предмет
+        return 0; 
     }
     
     if (inv->count >= inv->max_slots) {
@@ -193,36 +194,45 @@ void free_inventory(inventory *inv) {
     }
     free(inv);
 }
-
-void display_inventory(inventory *inv, item_database *db, int selected_index) {
+void display_inventory(inventory *inv, item_database *db, Hero *hero, int selected_index) {
     if (!inv || !inv->win || !db) return;
     
     werase(inv->win);
-    box(inv->win, 0, 0);
-    
-    // Заголовок
-    mvwprintw(inv->win, 0, 2, " ==Inventory== [%d/%d] ", inv->count, inv->max_slots);
-    
-    inventory_node *current = inv->head;
     int line = 1;
+    int max_y = getmaxy(inv->win);
+    int max_x = getmaxx(inv->win);
+    
+    // Отображаем статистику героя (первые 6 строк)
+    if (hero) {
+        mvwprintw(inv->win, line++, 2, "=== %s ===", hero->name);
+        mvwprintw(inv->win, line++, 2, "Уровень: %d", hero->level);
+        mvwprintw(inv->win, line++, 2, "HP: %d/%d", hero->hp, hero->max_hp);
+        mvwprintw(inv->win, line++, 2, "MP: %d/%d", hero->mp, hero->max_mp);
+        mvwprintw(inv->win, line++, 2, "Сила: %d Ловк: %d", hero->strength, hero->dexterity);
+        mvwprintw(inv->win, line++, 2, "Магия: %d", hero->magic);
+        line++; // Пустая строка
+    }
+    
+    // Горизонтальная линия разделитель
+    mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
+    
+    // Отображаем предметы инвентаря
+    inventory_node *current = inv->head;
     int index = 0;
     
-    while (current && line < getmaxy(inv->win) - 1) {
-        // Находим шаблон предмета
+    while (current && line < max_y - 1) {
         item_template* template = itemdb_find_by_id(db, current->item_id);
         if (!template) {
-            // Пропускаем, если шаблон не найден
             current = current->next;
             index++;
             continue;
         }
         
-        // Выделение выбранного элемента
         if (index == selected_index) {
             wattron(inv->win, A_REVERSE);
         }
         
-        // Отображение предмета с ограничением длины
+        // Отображение предмета
         char display[80];
         if (current->type == ITEM_ARTIFACT) {
             char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
@@ -244,10 +254,12 @@ void display_inventory(inventory *inv, item_database *db, int selected_index) {
         index++;
     }
     
-    // Отображаем свободные слоты
-    for (int i = inv->count; i < inv->max_slots && line < getmaxy(inv->win) - 1; i++) {
-        mvwprintw(inv->win, line, 2, "[Свободный слот]");
-        line++;
+    
+    // Инструкции внизу
+    if (line < max_y - 2) {
+        line = max_y - 3;
+        mvwprintw(inv->win, line++, 2, "E/U - Использовать  D - Выбросить");
+        mvwprintw(inv->win, line++, 2, "ESC/I - Закрыть");
     }
     
     wrefresh(inv->win);

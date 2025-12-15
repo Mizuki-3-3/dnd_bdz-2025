@@ -29,10 +29,6 @@ typedef struct {
 }consumable;
 
 const char* get_consumable_name(consumable_type type);
-const char* get_consumable_description(consumable_type type);
-int get_artifact_value(artifact* art);
-int compare_artifacts(artifact* a, artifact* b);
-
 
 
 #endif

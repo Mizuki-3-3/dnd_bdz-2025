@@ -2,10 +2,10 @@
 #define INVENTORY_H
 
 #include "equipment.h"
-#include "database.h"
 #include <curses.h>
 
 typedef struct Hero Hero;
+typedef struct item_database item_database;
 
 #define MAX_EQUIPPED 5
 #define BASE_CAPACITY 10
@@ -56,10 +56,10 @@ inventory_node* inventory_get_node_at_index(inventory *inv, int index);
 int inventory_equip_artifact(inventory *inv, inventory_node *node, equipment_slot slot);
 int inventory_unequip_artifact(inventory *inv, equipment_slot slot);
 void free_inventory(inventory *inv);
-void display_inventory(inventory *inv, item_database *db, int selected_index);
+void display_inventory(inventory *inv, item_database *db, Hero *hero, int selected_index);
 
 // Функции использования предметов
-int inventory_use_consumable(Hero *hero, inventory_node *node, item_database *db);
+int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, item_database *db);
 void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db);
 int inventory_remove_item(inventory *inv, inventory_node *node_to_remove);
 #endif

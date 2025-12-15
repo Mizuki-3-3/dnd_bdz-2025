@@ -8,6 +8,7 @@
 // Объявления внешних переменных (определены в game.c)
 extern item_database global_db;
 extern curw *narrative_win;
+extern curw *inventory_win;
 
 int start_to_work() {
     initscr(); // инициализируем библиотеку
@@ -25,15 +26,13 @@ int start_to_work() {
     }
     
     start_color(); // Активируем поддержку цвета
-    init_color(COLOR_WHITE, 800, 800, 100);
+    init_color(COLOR_WHITE, 100, 100, 100);
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
     init_pair(2, COLOR_WHITE, COLOR_RED);
     init_pair(3, COLOR_WHITE, COLOR_BLACK);
 
     int y, x;
     getmaxyx(stdscr, y, x);
-    curw *win = make_new_win(0, 0, y, x, "==Dungeons==");
-    
     return 0;
 }
 
@@ -44,24 +43,26 @@ curw *make_new_win(int y, int x, int height, int width, char *label) {
     // оформляем задник
     new->background = newwin(height, width, y, x);
     wbkgd(new->background, COLOR_PAIR(3));
+    wattron(new->background, COLOR_PAIR(3));
     for (int i = width*0.1; i < width; i++)
-        mvwaddch(new->background, height-1, i, '#');
+        mvwaddch(new->background, height-1, i, ACS_BLOCK);
     for (int i = height*0.2; i < height; i++)
-        mvwaddch(new->background, i, width-1, '#');
+        mvwaddch(new->background, i, width-1, ACS_BLOCK);
     wattroff(new->background, COLOR_PAIR(3));
     
     // оформляем передник
     new->decoration = derwin(new->background, height-2, width-2, 1, 1);
     wbkgd(new->decoration, COLOR_PAIR(1));
-    wborder(new->decoration, '|', '|', '-', '-', '+', '+', '+', '+');
+    box(new->decoration,0,0);
     
+    tui_win_label(new->decoration, label, 0);
+
     int xfd, yfd;
     getmaxyx(new->decoration, yfd, xfd);
     new->overlay = derwin(new->decoration, yfd-4, xfd-2, 3, 1); // рабочее дочернее окно
     wbkgd(new->overlay, COLOR_PAIR(1));
     new->panel = new_panel(new->background);
     
-    tui_win_label(new->decoration, label, 0);
     update_panels();
     doupdate();
     
@@ -80,7 +81,7 @@ void tui_win_label(WINDOW *win, char *label, int pos) {
     for (int i = 1; i < maxx - 1; i++) {
         mvwaddch(win, 2, i, ACS_HLINE);
     }
-    mvwaddch(win, 2, 0, ACS_LTEE);
+    mvwaddch(win, 2, 0, ACS_LTEE);       
     mvwaddch(win, 2, maxx - 1, ACS_RTEE);
 }
 
