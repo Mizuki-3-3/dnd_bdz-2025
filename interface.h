@@ -38,7 +38,7 @@ void tui_win_label(WINDOW *win, char *label, int pos);
 void create_game_windows(void);
 void display_hero_stats(WINDOW *win, Hero *hero);
 char show_item_menu(WINDOW *win, inventory_node *node, item_template *item);
-void show_location_description(int location_id);
+void print_location_description(int location_id);
 void update_window_titles(item_template *loc);  // Добавлена новая функция
-
+void print_wrapped_text(WINDOW *win, const char *text);
 #endif

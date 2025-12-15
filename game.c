@@ -176,68 +176,14 @@ void show_current_location(item_template *loc) {
     werase(win);
     
     if (loc) {
+        int max_y = getmaxy(win), max_x = getmaxx(win), line = 0, col = 0;
         // Обновляем заголовок окна с названием локации
         update_window_titles(loc);
-        
         const char *description = loc->template.location_template.description;
-        
-        int line = 1;
-        int col = 2;
-        int max_x = getmaxx(win) - 4; 
-        
-        // Простой вывод текста с обработкой переноса строк
-        int i = 0;
-        int start = 0;
-        
-        while (description[i] != '\0' && line < getmaxy(win) - 15) {
-            if (description[i] == '\n' || (i - start >= max_x && description[i] == ' ')) {
-                // Выводим строку
-                mvwaddnstr(win, line, 2, description + start, i - start);
-                line++;
-                start = i + 1;
-                
-                if (description[i] == '\n') {
-                    // Если это явный перенос строки, пропускаем
-                    while (description[start] == ' ' || description[start] == '\t') {
-                        start++;
-                    }
-                    i = start - 1; // i будет увеличен в конце цикла
-                }
-            }
-            i++;
+        print_wrapped_text(win, description);
+        getyx(win, line, col);
+        print_hint(win, line+2, max_y, loc); //+2 чтоб не слипались строки
         }
-        
-        // Выводим последнюю строку, если осталась
-        if (start < i && line < getmaxy(win) - 15) {
-            mvwaddnstr(win, line, 2, description + start, i - start);
-            line++;
-        }
-        
-        line += 2;
-        mvwprintw(win, line++, 2, "Доступные пути:");
-        
-        int exit_count = 0;
-        for (int i = 0; i < 7; i++) {
-            if (location_connections[current_location][i] && i != prev_location) {
-                mvwprintw(win, line++, 4, "%d. %s", i, location_names[i]);
-                exit_count++;
-            }
-        }
-        
-        line += 2;
-        switch (loc->template.location_template.type) {
-            case LOC_MONSTER:
-                mvwprintw(win, line++, 2, "A - Атаковать");
-                mvwprintw(win, line++, 2, "R - Отступить");
-                break;
-            case LOC_TREASURE:
-                mvwprintw(win, line++, 2, "T - Взять");
-                break;
-        }
-        line += 2;
-        mvwprintw(win, line++, 2, "I - Инвентарь  Q - Выход");
-    }
-    wrefresh(win);
 }
 
 void combat_with_monster(int location_id) {
@@ -458,7 +404,6 @@ void check_level_up(void) {
         // Показываем сообщение
         WINDOW *win = narrative_win->overlay;
         werase(win);
-        box(win, 0, 0);
         mvwprintw(win, 1, 2, "=== ПОВЫШЕНИЕ УРОВНЯ! ===");
         mvwprintw(win, 2, 2, "Вы достигли уровня %d!", player->level);
         mvwprintw(win, 3, 2, "Здоровье увеличено!");
@@ -496,9 +441,7 @@ void move_to_location(int new_location) {
     
     // Обновляем заголовок окна с названием новой локации
     item_template *loc = itemdb_find_by_id(&global_db, 400 + current_location);
-    if (loc) {
-        update_window_titles(loc);
-    }
+    update_window_titles(loc);
     
     // Обрабатываем события в новой локации
     handle_location_action(current_location);
@@ -540,9 +483,7 @@ void start_combat(int location_id) {
     
     while (combat_ongoing && player && player->hp > 0 && monster->health > 0) {
         werase(win);
-        box(win, 0, 0);
 
-        mvwprintw(win, 1, 2, "=== БОЙ ===");
         mvwprintw(win, 2, 2, "Противник: %s", monster->name);
         mvwprintw(win, 3, 2, "Здоровье врага: %d/%d", 
                  monster->health, monster->level * 3);
@@ -716,8 +657,6 @@ void open_inventory(void) {
         destroy_inventory_window();
         return;
     }
-    
-    // Создаем окно инвентаря
     create_inventory_window();
     if (!inventory_win) return;
     
@@ -727,7 +666,6 @@ void open_inventory(void) {
     while (inventory_open) {
         display_inventory(player_inv, &global_db, player, state.inventory_selected_index);
         int ch = getch();
-        ch = tolower(ch);
             
         switch (ch) {
             case KEY_UP:
@@ -741,16 +679,16 @@ void open_inventory(void) {
                 break;
                 
             case 'e':
-            case 'u':
+            case 'E':
                 use_item_from_inventory(state.inventory_selected_index);
                 break;
                     
             case 'd':
+            case 'D':
                 drop_item_from_inventory(state.inventory_selected_index);
                 break;
-                    
-            case 27: // ESC
             case 'i':
+            case 'I':
                 inventory_open = 0;
                 break;
         }
@@ -839,7 +777,6 @@ void save_game(void) {
     WINDOW *win = narrative_win ? narrative_win->overlay : NULL;
     if (win) {
         werase(win);
-        box(win, 0, 0);
         mvwprintw(win, 1, 2, "Игра сохранена!");
         mvwprintw(win, 2, 2, "Нажмите любую клавишу...");
         wrefresh(win);
@@ -854,12 +791,6 @@ int get_location_connection(int from, int to) {
     return 0;
 }
 
-const char* get_location_name_by_id(int id) {
-    if (id >= 0 && id < 7) {
-        return location_names[id];
-    }
-    return "Неизвестная локация";
-}
 
 void update_window_titles(item_template *loc) {
     if (!narrative_win) return;
@@ -882,4 +813,42 @@ void update_window_titles(item_template *loc) {
     // Обновляем панели
     update_panels();
     doupdate();
+}
+void print_hint(WINDOW *win, int line, int max_y, item_template *loc){
+    mvwprintw(win, line++, 2, "Доступные пути:");
+        
+    int exit_count = 0;
+    for (int i = 0; i < 7; i++) {
+        if (location_connections[current_location][i] && i != prev_location && line < max_y - 2) {
+            mvwprintw(win, line++, 4, "%d. %s", i, location_names[i]);
+            exit_count++;
+        }
+    }
+        
+    if (exit_count == 0 && line < max_y - 2) {
+        mvwprintw(win, line++, 4, "Нет доступных путей");
+    }
+        
+    line += 2;
+    if (line < max_y - 2) {
+        switch (loc->template.location_template.type) {
+            case LOC_MONSTER:
+                mvwprintw(win, line++, 2, "A - Атаковать");
+                if (line < max_y - 2) {
+                    mvwprintw(win, line++, 2, "R - Отступить");
+                }
+                break;
+            case LOC_TREASURE:
+                if (line < max_y - 2) {
+                    mvwprintw(win, line++, 2, "T - Взять");
+                }
+                break;
+        }
+    }
+        
+    line += 2;
+    if (line < max_y - 2) {
+        mvwprintw(win, line++, 2, "I - Инвентарь  Q - Выход");
+    }
+    wrefresh(win);
 }

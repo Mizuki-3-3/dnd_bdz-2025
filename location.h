@@ -2,7 +2,7 @@
 #define LOCATION_H
 
 #define MAX_NAME_LENGTH  32
-#define MAX_DESC_LENGTH 300
+#define MAX_DESC_LENGTH 1000
 #define MAX_EXITS_COUNT 8
 #define MAX_LOCATIONS 7
 

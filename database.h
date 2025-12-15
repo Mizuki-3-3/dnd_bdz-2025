@@ -7,7 +7,7 @@
 
 
 #define MAX_NAME_LENGTH  32
-#define MAX_DESC_LENGTH 300
+#define MAX_DESC_LENGTH 1000
 #define MAX_ITEMS 100
 
 typedef struct{

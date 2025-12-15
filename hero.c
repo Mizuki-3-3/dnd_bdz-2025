@@ -137,11 +137,6 @@ void level_up(Hero *hero, inventory *inv){
     printf("Характеристики обновлены!");
 }
 
-// hero.c - добавляем недостающие функции
-
-// ... существующий код ...
-
-// Лечение героя
 void heal_hero(Hero *hero, int amount) {
     if (!hero) return;
     
@@ -151,7 +146,6 @@ void heal_hero(Hero *hero, int amount) {
     }
 }
 
-// Применение эффекта
 void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
     if (!hero || hero->effect_count >= MAX_CONSUMABLE_EFFECTS) return;
     

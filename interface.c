@@ -164,38 +164,95 @@ char show_item_menu(WINDOW *win, inventory_node *node, item_template *item) {
     return ch;
 }
 
-void show_location_description(int location_id) {
-    item_template *loc = itemdb_find_by_id(&global_db, 400 + location_id);
-    if (!loc) return;
+
+
+void print_wrapped_text(WINDOW *win, const char *text) {
+    int win_height, win_width;
+    getmaxyx(win, win_height, win_width);
     
-    WINDOW *win = narrative_win->overlay;
-    werase(win);
+    int y, x;
+    getyx(win, y, x); // Текущая позиция курсора
     
-    mvwprintw(win, 1, 1, "=== %s ===", loc->name);
+    char *text_copy = strdup(text);
+    char *line = strtok(text_copy, "\n");
     
-    // Создаем копию строки для strtok
-    char desc_copy[MAX_DESC_LENGTH];
-    strncpy(desc_copy, loc->template.location_template.description, MAX_DESC_LENGTH - 1);
-    desc_copy[MAX_DESC_LENGTH - 1] = '\0';
-    
-    int line = 3;
-    int col = 1;
-    int max_x = getmaxx(win) - 2;
-    
-    char *word = strtok(desc_copy, " ");
-    while (word && line < getmaxy(win) - 5) {
-        int word_len = strlen(word);
+    while (line != NULL) {
+        int line_len = strlen(line);
+        int start_pos = 0;
         
-        if (col + word_len + 1 > max_x) {
-            line++;
-            col = 1;
+        // Обрабатываем строку пока не выведем все символы
+        while (start_pos < line_len) {
+            // Если курсор у нижней границы окна - выходим
+            if (y >= win_height) {
+                free(text_copy);
+                return;
+            }
+            
+            // Определяем сколько символов поместится в текущей строке окна
+            int max_chars = win_width - x;
+            int chars_to_print;
+            
+            // Если в текущей строке окна есть место
+            if (max_chars > 0) {
+                // Если оставшийся текст короче доступного места
+                if (line_len - start_pos <= max_chars) {
+                    chars_to_print = line_len - start_pos;
+                } else {
+                    // Ищем место для переноса (последний пробел в доступном диапазоне)
+                    chars_to_print = max_chars;
+                    while (chars_to_print > 0 && 
+                           line[start_pos + chars_to_print] != ' ' &&
+                           line[start_pos + chars_to_print - 1] != ' ') {
+                        chars_to_print--;
+                    }
+                    
+                    // Если не нашли пробел - переносим по границе окна
+                    if (chars_to_print == 0) {
+                        chars_to_print = max_chars;
+                    }
+                }
+                
+                // Выводим часть строки
+                mvwaddnstr(win, y, x, line + start_pos, chars_to_print);
+                start_pos += chars_to_print;
+                
+                // Пропускаем пробел после переноса
+                if (start_pos < line_len && line[start_pos] == ' ') {
+                    start_pos++;
+                }
+                
+                // Переходим на новую строку в окне
+                y++;
+                x = 0;
+                
+                // Если перенесли в середине слова, добавим дефис
+                if (chars_to_print > 0 && 
+                    start_pos > 0 && 
+                    start_pos < line_len &&
+                    line[start_pos] != ' ' &&
+                    line[start_pos - 1] != ' ') {
+                    // Можно добавить дефис в конце предыдущей строки:
+                    // waddch(win, '-');
+                }
+            } else {
+                // Нет места в текущей строке - переходим на следующую
+                y++;
+                x = 0;
+                max_chars = win_width;
+            }
         }
         
-        mvwprintw(win, line, col, "%s ", word);
-        col += word_len + 1;
+        // Получаем следующую строку (разделенную \n)
+        line = strtok(NULL, "\n");
         
-        word = strtok(NULL, " ");
+        // Между строками из исходного текста добавляем пустую строку
+        if (line != NULL) {
+            y++;
+            x = 0;
+        }
     }
     
+    free(text_copy);
+    wmove(win, y, x); // Устанавливаем курсор в конечную позицию
     wrefresh(win);
 }

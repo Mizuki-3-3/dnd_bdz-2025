@@ -50,6 +50,6 @@ int calculate_damage(int base, int dice_roll);
 void check_level_up(void);
 void game_over(void);
 int get_location_connection(int from, int to);
-const char* get_location_name_by_id(int id);
+void print_hint(WINDOW *win, int line, int max_y, item_template *loc);
 
 #endif
