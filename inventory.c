@@ -202,7 +202,6 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
     int max_y = getmaxy(inv->win);
     int max_x = getmaxx(inv->win);
     
-    // Отображаем статистику героя (первые 6 строк)
     if (hero) {
         mvwprintw(inv->win, line++, 2, "=== %s ===", hero->name);
         mvwprintw(inv->win, line++, 2, "Уровень: %d", hero->level);
@@ -213,10 +212,8 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
         line++; // Пустая строка
     }
     
-    // Горизонтальная линия разделитель
     mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
     
-    // Отображаем предметы инвентаря
     inventory_node *current = inv->head;
     int index = 0;
     
@@ -232,7 +229,6 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
             wattron(inv->win, A_REVERSE);
         }
         
-        // Отображение предмета
         char display[80];
         if (current->type == ITEM_ARTIFACT) {
             char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
@@ -255,7 +251,7 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
     }
     
     
-    // Инструкции внизу
+    // подсказки
     if (line < max_y - 2) {
         line = max_y - 3;
         mvwprintw(inv->win, line++, 2, "E/U - Использовать  D - Выбросить");
@@ -294,7 +290,6 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
                 hero->active_effects[hero->effect_count].remaining_duration = cons->duration;
                 hero->effect_count++;
                 
-                // Применяем эффект немедленно
                 switch (cons->type) {
                     case STRENGTH_POT: hero->strength += cons->power; break;
                     case DEXTERITY_POT: hero->dexterity += cons->power; break;
@@ -307,11 +302,8 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
         default:
             return 0;
     }
-    
-    // Уменьшаем количество
     node->state.consumable_state.quantity--;
     if (node->state.consumable_state.quantity <= 0) {
-        // Удаляем предмет, если он закончился
         inventory_remove_item(inv, node);
     }
     
@@ -319,7 +311,6 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
 }
 
 
-// Расчет статов из экипировки
 void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db) {
     if (!hero || !inv || !db) return;
     

@@ -1,10 +1,9 @@
 #ifndef HERO_H
 #define HERO_H
 
-
 #include "inventory.h"
 
-#define MAX_NAME_LENGTH  32
+#define MAX_NAME_LENGTH  64
 #define MAX_CONSUMABLE_EFFECTS 10
 typedef enum{
     MAGICIAN,

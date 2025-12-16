@@ -28,7 +28,5 @@ typedef struct {
     int duration;
 }consumable;
 
-const char* get_consumable_name(consumable_type type);
-
 
 #endif

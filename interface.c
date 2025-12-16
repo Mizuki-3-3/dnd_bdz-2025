@@ -5,7 +5,6 @@
 #include "hero.h"
 #include "inventory.h"
 
-// Объявления внешних переменных (определены в game.c)
 extern item_database global_db;
 extern curw *narrative_win;
 extern curw *inventory_win;
@@ -85,87 +84,6 @@ void tui_win_label(WINDOW *win, char *label, int pos) {
     mvwaddch(win, 2, maxx - 1, ACS_RTEE);
 }
 
-void display_hero_stats(WINDOW *win, Hero *hero) {
-    if (!win || !hero) return;
-    
-    int max_y, max_x;
-    getmaxyx(win, max_y, max_x);
-    
-    // Очищаем область
-    for (int i = 0; i < 12; i++) {
-        mvwhline(win, i, 0, ' ', max_x);
-    }
-    
-    mvwprintw(win, 0, 1, "=== ХАРАКТЕРИСТИКИ ===");
-    mvwprintw(win, 2, 1, "Уровень: %d", hero->level);
-    mvwprintw(win, 3, 1, "Опыт: %d/%d", hero->exp, hero->exp_to_next);
-    mvwprintw(win, 4, 1, "HP: %d/%d", hero->hp, hero->max_hp);
-    mvwprintw(win, 5, 1, "MP: %d/%d", hero->mp, hero->max_mp);
-    mvwprintw(win, 6, 1, "Сила: %d", hero->strength);
-    mvwprintw(win, 7, 1, "Ловкость: %d", hero->dexterity);
-    mvwprintw(win, 8, 1, "Магия: %d", hero->magic);
-    mvwprintw(win, 9, 1, "Локация: %d", hero->current_location);
-    
-    // Показываем активные эффекты
-    if (hero->effect_count > 0) {
-        mvwprintw(win, 11, 1, "Эффекты:");
-        int line = 12;
-        for (int i = 0; i < hero->effect_count && line < max_y - 2; i++) {
-            const char *effect_name = "";
-            switch (hero->active_effects[i].type) {
-                case STRENGTH_POT: effect_name = "Сила"; break;
-                case DEXTERITY_POT: effect_name = "Ловкость"; break;
-                case MAGIC_POT: effect_name = "Магия"; break;
-                default: effect_name = "Другой";
-            }
-            mvwprintw(win, line++, 3, "%s +%d (%d хв.)", 
-                     effect_name, hero->active_effects[i].power,
-                     hero->active_effects[i].remaining_duration);
-        }
-    }
-}
-
-char show_item_menu(WINDOW *win, inventory_node *node, item_template *item) {
-    if (!win || !node || !item) return 0;
-    
-    int max_y, max_x;
-    getmaxyx(win, max_y, max_x);
-    
-    WINDOW *menu_win = newwin(8, 40, max_y/2 - 4, max_x/2 - 20);
-    box(menu_win, 0, 0);
-    
-    mvwprintw(menu_win, 1, 2, "%s", item->name);
-    
-    char desc[70];
-    strncpy(desc, item->description, 59);
-    desc[59] = '\0';
-    mvwprintw(menu_win, 2, 2, "%s", desc);
-    
-    //доступные действия
-    if (node->type == ITEM_ARTIFACT) {
-        if (node->state.artifact_state.is_equipped) {
-            mvwprintw(menu_win, 4, 2, "E - Снять");
-        } else {
-            mvwprintw(menu_win, 4, 2, "E - Надеть");
-        }
-    } else {
-        mvwprintw(menu_win, 4, 2, "U - Использовать");
-        mvwprintw(menu_win, 5, 2, "Количество: %d", node->state.consumable_state.quantity);
-    }
-    
-    mvwprintw(menu_win, 6, 2, "D - Выбросить");
-    mvwprintw(menu_win, 7, 2, "ESC - Назад");
-    
-    wrefresh(menu_win);
-    
-    int ch = getch();
-    delwin(menu_win);
-    
-    return ch;
-}
-
-
-
 void print_wrapped_text(WINDOW *win, const char *text) {
     int win_height, win_width;
     getmaxyx(win, win_height, win_width);
@@ -180,25 +98,19 @@ void print_wrapped_text(WINDOW *win, const char *text) {
         int line_len = strlen(line);
         int start_pos = 0;
         
-        // Обрабатываем строку пока не выведем все символы
         while (start_pos < line_len) {
-            // Если курсор у нижней границы окна - выходим
             if (y >= win_height) {
                 free(text_copy);
                 return;
             }
             
-            // Определяем сколько символов поместится в текущей строке окна
             int max_chars = win_width - x;
             int chars_to_print;
             
-            // Если в текущей строке окна есть место
             if (max_chars > 0) {
-                // Если оставшийся текст короче доступного места
                 if (line_len - start_pos <= max_chars) {
                     chars_to_print = line_len - start_pos;
                 } else {
-                    // Ищем место для переноса (последний пробел в доступном диапазоне)
                     chars_to_print = max_chars;
                     while (chars_to_print > 0 && 
                            line[start_pos + chars_to_print] != ' ' &&
@@ -206,26 +118,21 @@ void print_wrapped_text(WINDOW *win, const char *text) {
                         chars_to_print--;
                     }
                     
-                    // Если не нашли пробел - переносим по границе окна
                     if (chars_to_print == 0) {
                         chars_to_print = max_chars;
                     }
                 }
                 
-                // Выводим часть строки
                 mvwaddnstr(win, y, x, line + start_pos, chars_to_print);
                 start_pos += chars_to_print;
                 
-                // Пропускаем пробел после переноса
                 if (start_pos < line_len && line[start_pos] == ' ') {
                     start_pos++;
                 }
                 
-                // Переходим на новую строку в окне
                 y++;
                 x = 0;
                 
-                // Если перенесли в середине слова, добавим дефис
                 if (chars_to_print > 0 && 
                     start_pos > 0 && 
                     start_pos < line_len &&
@@ -235,17 +142,13 @@ void print_wrapped_text(WINDOW *win, const char *text) {
                     // waddch(win, '-');
                 }
             } else {
-                // Нет места в текущей строке - переходим на следующую
                 y++;
                 x = 0;
                 max_chars = win_width;
             }
         }
         
-        // Получаем следующую строку (разделенную \n)
         line = strtok(NULL, "\n");
-        
-        // Между строками из исходного текста добавляем пустую строку
         if (line != NULL) {
             y++;
             x = 0;
@@ -253,6 +156,7 @@ void print_wrapped_text(WINDOW *win, const char *text) {
     }
     
     free(text_copy);
-    wmove(win, y, x); // Устанавливаем курсор в конечную позицию
+    wmove(win, y, x); // Устанавка курсора в конечную позицию
     wrefresh(win);
 }
+

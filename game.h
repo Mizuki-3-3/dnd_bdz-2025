@@ -11,7 +11,6 @@
 // Глобальные переменные игры (extern для доступа из других файлов)
 extern curw *narrative_win;
 extern curw *inventory_win;
-extern curw *equipment_win;
 extern item_database global_db;
 extern Hero *player;
 extern inventory *player_inv;
@@ -28,8 +27,6 @@ int choose_class(WINDOW *win);
 
 // Функции навигации
 void move_to_location(int new_location);
-void handle_location_action(int location_id);
-void show_location_description(int location_id);
 void show_current_location(item_template *loc);
 
 // Функции боя

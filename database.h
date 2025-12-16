@@ -6,9 +6,9 @@
 #include "location.h"
 
 
-#define MAX_NAME_LENGTH  32
-#define MAX_DESC_LENGTH 1000
-#define MAX_ITEMS 100
+#define MAX_NAME_LENGTH  64
+#define MAX_DESC_LENGTH 700
+#define MAX_ITEMS 50
 
 typedef struct{
     int id;

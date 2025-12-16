@@ -5,7 +5,7 @@ LDD="-LC:\Users\kamila\Desktop\tools\PDCurses-3.9\wincon"
 LDFLAGS = -lpdcurses
 
 CFLAGS = -Wall -Wextra -O2 -mconsole $(INC) -D_UNICODE -DUNICODE -DPDC_FORCE_UTF8
-SRCS = main.c game.c interface.c history.c inventory.c hero.c database.c location.c monster.c
+SRCS = main.c game.c interface.c history.c inventory.c hero.c database.c monster.c
 OBJS = $(SRCS:.c=.o)
 
 all: test.exe
@@ -33,9 +33,6 @@ hero.o: hero.c hero.h inventory.h
 
 database.o: database.c database.h monster.h equipment.h location.h
 	$(CC) $(CFLAGS) -c database.c -o database.o
-
-location.o: location.c location.h
-	$(CC) $(CFLAGS) -c location.c -o location.o
 
 monster.o: monster.c monster.h
 	$(CC) $(CFLAGS) -c monster.c -o monster.o
