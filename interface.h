@@ -21,6 +21,7 @@ typedef struct {
     game_mode previous_mode;
     int inventory_selected_index;
     int quit_flag;
+    int restart_flag;
 } game_state;
 
 typedef struct cursed_window {

@@ -24,7 +24,7 @@ void chapter1(WINDOW *win) {
         werase(win);
         print_wrapped_text(win, segments[i]);
         
-        // Подсказка (кроме последнего сегмента)
+        // Подсказка (кроме последней части)
         if (i < NUM_SEGMENTS_CH1 - 1) {
             wattron(win, A_REVERSE);
             mvwprintw(win, max_y - 2, max_x/2 - 10, " Нажмите ПРОБЕЛ ");
@@ -35,8 +35,7 @@ void chapter1(WINDOW *win) {
             wattroff(win, A_REVERSE);
         }
         wrefresh(win);
-        
-        // Ждём ввода
+
         int ch = getch();
         if (ch == 27) { // esc - пропустить главу
             break;
@@ -56,8 +55,8 @@ void chapter1(WINDOW *win) {
     werase(win);
 }
 
-void final(WINDOW *win) {
-    if (!win) return;
+int final(WINDOW *win) {
+    if (!win) return 0;
     int max_y, max_x;  
     const char *segments[] = {
         "Вы стоите над телом дозорного. Тишина, которая теперь кажется звенящей, кричит об одном: его напарники уже на подходе. Времени — вдох, выдох.",
@@ -71,7 +70,8 @@ void final(WINDOW *win) {
     };
     getmaxyx(win, max_y, max_x);
     
-    for (int i = 0; i < NUM_SEGMENTS_CH1; i++) {
+    // Показываем все сегменты истории
+    for (int i = 0; i < NUM_SEGMENTS_F; i++) {
         werase(win);
         print_wrapped_text(win, segments[i]);
         
@@ -79,30 +79,47 @@ void final(WINDOW *win) {
             wattron(win, A_REVERSE);
             mvwprintw(win, max_y - 2, max_x/2 - 10, " Нажмите ПРОБЕЛ ");
             wattroff(win, A_REVERSE);
+            wrefresh(win);
+            
+            // Ждём пробел
+            int ch;
+            while (1) {
+                ch = getch();
+                if (ch == ' ') {
+                    break; // Переход к следующему сегменту
+                }
+            }
         } else {
             wattron(win, A_REVERSE);
             mvwprintw(win, max_y - 2, max_x/2 - 15, " Нажмите любую клавишу ");
             wattroff(win, A_REVERSE);
-        }
-        wrefresh(win);
-        
-        // Ждём ввода
-        int ch = getch();
-        if (ch == 27) { // esc - пропустить главу
-            break;
-        }
-        
-        if (i < NUM_SEGMENTS_CH1 - 1) {     // Для всех кроме последнего - ждём пробел  
-            while (ch != ' ') {
-                if (ch == 27) { // ESC
-                    werase(win);
-                    return;
-                }
-                ch = getch();
-            }
+            wrefresh(win);
+            getch();
         }
     }
-    
     werase(win);
+    wattron(win, A_BOLD);
+    mvwprintw(win, max_y/2 - 2, max_x/2 - 15, "=== ИГРА ЗАВЕРШЕНА ===");
+    wattroff(win, A_BOLD);
+    
+    mvwprintw(win, max_y/2, max_x/2 - 25, "Поздравляем! Вы достигли своей цели.");
+    mvwprintw(win, max_y/2 + 2, max_x/2 - 20, "Хотите сыграть заново?");
+    mvwprintw(win, max_y/2 + 4, max_x/2 - 15, "Y - Да, начать новую игру");
+    mvwprintw(win, max_y/2 + 5, max_x/2 - 15, "N - Нет, выйти из игры");
+    
+    wrefresh(win);
+    
+    // Ждём корректный ввод
+    int choice = 0;
+    while (!choice) {
+        int ch = tolower(getch());
+        if (ch == 'y') {
+            choice = 1; // перезапустить
+        } else if (ch == 'n') {
+            choice = 0; // выйти
+        }
+    }
+    werase(win);
+    wrefresh(win);
+    return choice;
 }
-

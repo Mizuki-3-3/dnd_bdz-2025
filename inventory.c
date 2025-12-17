@@ -310,20 +310,19 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
     return 1;
 }
 
-
 void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db) {
     if (!hero || !inv || !db) return;
     
-    // Сбрасываем статы к базовым
+    // сбрасываем статы к базовым
     hero->strength = hero->base_strength;
     hero->dexterity = hero->base_dexterity;
     hero->magic = hero->base_magic;
     
-    // Добавляем бонусы от экипированных предметов
+    // добавляем бонусы от экипированных предметов
     for (int i = 0; i < MAX_EQUIPPED; i++) {
         if (inv->equipped[i]) {
             item_template *item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
-            if (item && item->id >= 200 && item->id < 300) { // Это артефакт
+            if (item && item->id >= 200 && item->id < 300) {
                 artifact *art = &item->template.artifact_template;
                 hero->strength += art->strength_bonus;
                 hero->dexterity += art->dexterity_bonus;
@@ -332,7 +331,7 @@ void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *d
         }
     }
     
-    // Добавляем бонусы от активных эффектов
+    // добавляем бонусы от активных эффектов
     for (int i = 0; i < hero->effect_count; i++) {
         switch (hero->active_effects[i].type) {
             case STRENGTH_POT:

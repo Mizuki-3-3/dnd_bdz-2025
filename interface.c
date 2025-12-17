@@ -138,8 +138,6 @@ void print_wrapped_text(WINDOW *win, const char *text) {
                     start_pos < line_len &&
                     line[start_pos] != ' ' &&
                     line[start_pos - 1] != ' ') {
-                    // Можно добавить дефис в конце предыдущей строки:
-                    // waddch(win, '-');
                 }
             } else {
                 y++;
@@ -154,9 +152,8 @@ void print_wrapped_text(WINDOW *win, const char *text) {
             x = 0;
         }
     }
-    
     free(text_copy);
-    wmove(win, y, x); // Устанавка курсора в конечную позицию
+    wmove(win, y, x); //устанавка курсора в конечную позицию
     wrefresh(win);
 }
 

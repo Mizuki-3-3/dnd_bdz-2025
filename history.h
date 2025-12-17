@@ -7,6 +7,6 @@
 
 
 void chapter1(WINDOW* win);
-void final(WINDOW* win);
+int final(WINDOW* win);
 
 #endif

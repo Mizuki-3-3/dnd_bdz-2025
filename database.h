@@ -5,7 +5,6 @@
 #include "equipment.h"
 #include "location.h"
 
-
 #define MAX_NAME_LENGTH  64
 #define MAX_DESC_LENGTH 700
 #define MAX_ITEMS 50

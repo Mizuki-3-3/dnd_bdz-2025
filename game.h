@@ -42,7 +42,7 @@ void open_inventory(void);
 void use_item_from_inventory(int index);
 void drop_item_from_inventory(int index);
 
-int roll_dice(int sides);
+int roll_dice();
 int calculate_damage(int base, int dice_roll);
 void check_level_up(void);
 void game_over(void);

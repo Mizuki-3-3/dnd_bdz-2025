@@ -12,76 +12,55 @@ Hero* create_hero(const char* name, int class) {
     h->name[MAX_NAME_LENGTH - 1] = '\0';
 
     switch (class){
-        case 1:
+        case 1: // маг
             h->level = 1;
             h->hp = 20;
-            h->mp = 35;
+            h->mp = 50;
             h->max_hp = 20;
-            h->max_mp = 35;
-            h->strength = 10;
-            h->dexterity = 10;
-            h->magic = 20;
+            h->max_mp = 50;
+            h->strength = 5;    // слабый физически
+            h->dexterity = 10;  // средняя ловкость
+            h->magic = 25;      // сильная магия
             h->exp = 0;
             h->exp_to_next = 50;
-            h->base_strength = h->strength;
-            h->base_dexterity = h->dexterity;
-            h->base_magic=h->magic;
-            h->effect_count=0;
             h->type = MAGICIAN;
-            for (int i = 0; i < MAX_CONSUMABLE_EFFECTS; i++) {
-                h->active_effects[i].type = FOOD;  
-                h->active_effects[i].power = 0;
-                h->active_effects[i].remaining_duration = 0;
-            }
             break;
-        case 2:
+        case 2: // рыцарь
             h->level = 1;
-            h->hp = 20;
-            h->mp = 35;
-            h->max_hp = 20;
-            h->max_mp = 35;
-            h->strength = 10;
-            h->dexterity = 10;
-            h->magic = 20;
+            h->hp = 35;
+            h->mp = 20;
+            h->max_hp = 35;
+            h->max_mp = 20;
+            h->strength = 20;   // сильный физически
+            h->dexterity = 8;   // низкая ловкость
+            h->magic = 5;       // слабая магия
             h->exp = 0;
             h->exp_to_next = 50;
-            h->base_strength = h->strength;
-            h->base_dexterity = h->dexterity;
-            h->base_magic=h->magic;
-            h->effect_count=0;
-            h->type = MAGICIAN;
-            for (int i = 0; i < MAX_CONSUMABLE_EFFECTS; i++) {
-                h->active_effects[i].type = FOOD;  
-                h->active_effects[i].power = 0;
-                h->active_effects[i].remaining_duration = 0;
-            }
+            h->type = KNIGHT;
             break;
-        case 3:
+        
+        case 3: // плут
             h->level = 1;
-            h->hp = 20;
-            h->mp = 35;
-            h->max_hp = 20;
-            h->max_mp = 35;
-            h->strength = 10;
-            h->dexterity = 10;
-            h->magic = 20;
+            h->hp = 25;
+            h->mp = 30;
+            h->max_hp = 25;
+            h->max_mp = 30;
+            h->strength = 10;   // средняя сила
+            h->dexterity = 25;  // высокая ловкость
+            h->magic = 10;      // средняя магия
             h->exp = 0;
             h->exp_to_next = 50;
-            h->base_strength = h->strength;
-            h->base_dexterity = h->dexterity;
-            h->base_magic=h->magic;
-            h->effect_count=0;
-            h->type = MAGICIAN;
-            for (int i = 0; i < MAX_CONSUMABLE_EFFECTS; i++) {
-                h->active_effects[i].type = FOOD;  
-                h->active_effects[i].power = 0;
-                h->active_effects[i].remaining_duration = 0;
-            }
+            h->type = RASCAL;
             break;
-            
+        
         default:
-            break;
-        }
+            free(h);
+            return NULL;
+    }
+    h->base_strength = h->strength;
+    h->base_dexterity = h->dexterity;
+    h->base_magic = h->magic;
+    h->effect_count = 0;
     return h;
 }
 void destroy_hero(Hero* hero) {
@@ -108,33 +87,30 @@ int load_hero(Hero* hero, const char* name) {
     return (read == 1);
 }
 
-void level_up(Hero *hero, inventory *inv){
-    int choice;
+void level_up(Hero *hero, inventory *inv) {
     if (!hero) return;
-    if (hero->exp_to_next<=hero->exp){
+    
+    if (hero->exp >= hero->exp_to_next) {
         hero->level++;
         hero->exp -= hero->exp_to_next;
         hero->exp_to_next = (int)(hero->exp_to_next * 1.5);
-        printf("Вы достигли %d уровня!\n", hero->level);
-        printf("Распределите 5 очков улучшения:\n");
-        printf("1. +5 к здоровью\n2. +2 к силе\n3. +2 к грузоподъемности\nВаш выбор: ");
-    }
-
-    scanf("%d", &choice);
-    switch (choice) {
-        case 1:
-            hero->max_hp += 5;
-            break;
-        case 2:
-            hero->base_strength += 2;
-            break;
         
-        case 3:
+        hero->max_hp += 10;
+        hero->hp = hero->max_hp;
+        hero->max_mp += 5;
+        hero->mp = hero->max_mp;
+        hero->base_strength += 2;
+        hero->base_dexterity += 1;
+        hero->base_magic += 1;
+        
+        hero->strength = hero->base_strength;
+        hero->dexterity = hero->base_dexterity;
+        hero->magic = hero->base_magic;
+
+        if (inv) {
             inventory_update_capacity(inv, hero->level);
-            break;
-        default: printf("Выбор некорректен, попробуйте ещё раз\n"); level_up(hero, inv);
+        }
     }
-    printf("Характеристики обновлены!");
 }
 
 void heal_hero(Hero *hero, int amount) {
