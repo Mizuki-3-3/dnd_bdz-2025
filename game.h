@@ -8,7 +8,7 @@
 #include <time.h> 
 #include <ctype.h>
 
-// Глобальные переменные игры (extern для доступа из других файлов)
+// Глобальные переменные игры
 extern curw *narrative_win;
 extern curw *inventory_win;
 extern item_database global_db;
@@ -17,12 +17,14 @@ extern inventory *player_inv;
 extern game_state state;
 extern int current_location;
 extern int prev_location;
+extern char player_name[MAX_NAME_LENGTH];
+extern int chosen_class;
 
 // Основные игровые функции
 void game_loop(void);
 void init_new_game(const char *name, int clas);
-int load_game(const char *name);
-void save_game(void);
+int load_saved_game(const char *save_name);  
+int save_current_game(void);                
 int choose_class(WINDOW *win);
 
 // Функции навигации
@@ -31,10 +33,9 @@ void show_current_location(item_template *loc);
 
 // Функции боя
 void start_combat(int monster_id);
-void player_attack(Monster* monster);
+void player_attack(Monster* monster, int use_magic);
 void monster_attack_player(Monster* monster);
 void end_combat(int victory);
-void combat_with_monster(int monster_id);
 void take_treasure(int location_id);
 
 // Функции инвентаря

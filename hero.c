@@ -4,7 +4,7 @@
 #include "hero.h"
 
 Hero* create_hero(const char* name, int class) {
-    if (!name || strlen(name) == 0) return NULL;
+    if (!name || strlen(name) == 0) strncpy(name, "Браконьер", sizeof("Браконьер"));
 
     Hero* h = malloc(sizeof(Hero));
     if (!h) return NULL;
@@ -14,25 +14,22 @@ Hero* create_hero(const char* name, int class) {
     switch (class){
         case 1: // маг
             h->level = 1;
-            h->hp = 20;
-            h->mp = 50;
-            h->max_hp = 20;
-            h->max_mp = 50;
-            h->strength = 5;    // слабый физически
-            h->dexterity = 10;  // средняя ловкость
-            h->magic = 25;      // сильная магия
+            h->hp = 25;
+            h->mp = h->max_mp = 40;
+            h->max_hp = 25;
+            h->strength = 6;    // слабый физически
+            h->dexterity = 8;  // средняя ловкость
+            h->magic = 18;      // сильная магия
             h->exp = 0;
             h->exp_to_next = 50;
             h->type = MAGICIAN;
             break;
         case 2: // рыцарь
             h->level = 1;
-            h->hp = 35;
-            h->mp = 20;
-            h->max_hp = 35;
-            h->max_mp = 20;
-            h->strength = 20;   // сильный физически
-            h->dexterity = 8;   // низкая ловкость
+            h->hp = h->max_hp = 40;
+            h->mp = h->max_mp = 15;
+            h->strength = 18;   // сильный физически
+            h->dexterity = 7;   // низкая ловкость
             h->magic = 5;       // слабая магия
             h->exp = 0;
             h->exp_to_next = 50;
@@ -41,13 +38,11 @@ Hero* create_hero(const char* name, int class) {
         
         case 3: // плут
             h->level = 1;
-            h->hp = 25;
-            h->mp = 30;
-            h->max_hp = 25;
-            h->max_mp = 30;
-            h->strength = 10;   // средняя сила
-            h->dexterity = 25;  // высокая ловкость
-            h->magic = 10;      // средняя магия
+            h->hp = h->max_hp = 30;
+            h->mp = h->max_mp = 25;
+            h->strength = 12;   // средняя сила
+            h->dexterity = 16;  // высокая ловкость
+            h->magic = 9;      // средняя магия
             h->exp = 0;
             h->exp_to_next = 50;
             h->type = RASCAL;
@@ -65,26 +60,6 @@ Hero* create_hero(const char* name, int class) {
 }
 void destroy_hero(Hero* hero) {
     free(hero);
-}
-int save_hero(const Hero* hero, const char* name) {
-    if (!hero || !name) return 0;
-    char filename[256];
-    snprintf(filename, sizeof(filename), "%s.save", name);
-    FILE* f = fopen(filename, "wb");
-    if (!f) return 0;
-    fwrite(hero, sizeof(Hero), 1, f);
-    fclose(f);
-    return 1;
-}
-int load_hero(Hero* hero, const char* name) {
-    if (!hero || !name) return 0;
-    char filename[256];
-    snprintf(filename, sizeof(filename), "%s.save", name);
-    FILE* f = fopen(filename, "rb");
-    if (!f) return 0;
-    size_t read = fread(hero, sizeof(Hero), 1, f);
-    fclose(f);
-    return (read == 1);
 }
 
 void level_up(Hero *hero, inventory *inv) {
@@ -130,7 +105,6 @@ void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
     hero->active_effects[hero->effect_count].remaining_duration = duration;
     hero->effect_count++;
     
-    // Немедленно применяем эффект
     switch (type) {
         case STRENGTH_POT:
             hero->strength += power;
@@ -146,7 +120,6 @@ void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
     }
 }
 
-// Обновление эффектов (уменьшение длительности)
 void update_effects(Hero *hero) {
     if (!hero) return;
     

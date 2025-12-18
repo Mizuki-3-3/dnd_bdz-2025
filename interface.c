@@ -26,7 +26,7 @@ int start_to_work() {
     
     start_color(); // Активируем поддержку цвета
     init_color(COLOR_WHITE, 100, 100, 100);
-    init_pair(1, COLOR_WHITE, COLOR_BLUE);
+    init_pair(1, COLOR_WHITE, COLOR_GREEN);
     init_pair(2, COLOR_WHITE, COLOR_RED);
     init_pair(3, COLOR_WHITE, COLOR_BLACK);
 

@@ -6,7 +6,7 @@
 #include "location.h"
 
 #define MAX_NAME_LENGTH  64
-#define MAX_DESC_LENGTH 700
+#define MAX_DESC_LENGTH 750
 #define MAX_ITEMS 50
 
 typedef struct{
@@ -28,7 +28,7 @@ typedef struct item_database{
 
 void itemdb_init(item_database* db);
 item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id);
-item_template* itemdb_create_consumable(item_database* db, const char* name, const char* desc, consumable_type type, int power, int duration, int id);
+item_template* itemdb_create_consumable(item_database* db, const char* name, consumable_type type, int power, int duration, int id);
 item_template* itemdb_find_by_id(item_database* db, int id);
 item_template* itemdb_create_location(item_database* db, const char* name, const char* desc, int exits_count, loc_type type, int id);
 void init_default_items(item_database* db);

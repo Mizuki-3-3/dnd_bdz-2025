@@ -98,28 +98,6 @@ int final(WINDOW *win) {
         }
     }
     werase(win);
-    wattron(win, A_BOLD);
-    mvwprintw(win, max_y/2 - 2, max_x/2 - 15, "=== ИГРА ЗАВЕРШЕНА ===");
-    wattroff(win, A_BOLD);
-    
-    mvwprintw(win, max_y/2, max_x/2 - 25, "Поздравляем! Вы достигли своей цели.");
-    mvwprintw(win, max_y/2 + 2, max_x/2 - 20, "Хотите сыграть заново?");
-    mvwprintw(win, max_y/2 + 4, max_x/2 - 15, "Y - Да, начать новую игру");
-    mvwprintw(win, max_y/2 + 5, max_x/2 - 15, "N - Нет, выйти из игры");
-    
     wrefresh(win);
-    
-    // Ждём корректный ввод
-    int choice = 0;
-    while (!choice) {
-        int ch = tolower(getch());
-        if (ch == 'y') {
-            choice = 1; // перезапустить
-        } else if (ch == 'n') {
-            choice = 0; // выйти
-        }
-    }
-    werase(win);
-    wrefresh(win);
-    return choice;
+    return 1;
 }

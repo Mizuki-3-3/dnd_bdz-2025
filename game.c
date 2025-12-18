@@ -10,6 +10,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 curw *narrative_win = NULL;  
 curw *inventory_win = NULL;
@@ -21,6 +22,8 @@ int current_location = 0;
 int prev_location = 0;
 char player_name[MAX_NAME_LENGTH];
 int chosen_class;
+#define TIME 1000
+#define FILE_SIZE 256
 
 static int location_connections[7][7] = {// Матрица смежности локаций 
     {0, 1, 1, 0, 0, 0, 0},  // 0 - Берег реки
@@ -52,19 +55,32 @@ static void open_inventory(void);
 static void use_item_from_inventory(int index);
 static void drop_item_from_inventory(int index);
 static void game_over(void);
-static void victory_screen(void);
 static void check_level_up(void);
 static void move_to_location(int new_location);
 static void create_inventory_window(void);
 static void destroy_inventory_window(void);
 static void open_inventory_in_combat(void);
 static void give_monster_loot(Monster* monster);
-static void restart_game(void);  // ← НОВАЯ ФУНКЦИЯ
+
+// Упрощенные функции сохранения/загрузки
+static int save_current_game(void);
+static int load_saved_game(const char *save_name);
 
 void create_game_windows(void) {
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    narrative_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Dungeon==");
+    
+    // Создаем временный указатель для narrative_win
+    curw *temp_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Dungeon==");
+    if (!temp_win) {
+        // Обработка ошибки: не удалось создать окно
+        // Можно вывести сообщение об ошибке
+        mvwprintw(stdscr, max_y/2, max_x/2 - 10, "Ошибка создания окна!");
+        wrefresh(stdscr);
+        napms(TIME);
+        return;
+    }
+    narrative_win = temp_win;
     
     inventory_win = NULL;
     
@@ -115,22 +131,58 @@ int choose_class(WINDOW *win) {
 }
 
 void init_new_game(const char *name, int class) {
-    player = create_hero(name, class);
-    if (!player) return;
+    // освобождаем старые данные
+    if (player) {
+        destroy_hero(player);
+        player = NULL;
+    }
+    if (player_inv) {
+        free_inventory(player_inv);
+        player_inv = NULL;
+    }
     
-    player_inv = create_inventory();
-    if (!player_inv) {
-        free(player);
+    Hero *temp_hero = create_hero(name, class);
+    if (!temp_hero) {
+        if (narrative_win && narrative_win->overlay) {
+            WINDOW *win = narrative_win->overlay;
+            werase(win);
+            mvwprintw(win, 1, 2, "ошибка выделения памяти под героя!");
+            wrefresh(win);
+            napms(TIME);
+        }
         return;
     }
     
+    inventory *temp_inv = create_inventory();
+    if (!temp_inv) {
+        destroy_hero(temp_hero);
+        if (narrative_win && narrative_win->overlay) {
+            WINDOW *win = narrative_win->overlay;
+            werase(win);
+            mvwprintw(win, 1, 2, "Ошибка создания инвентаря!");
+            wrefresh(win);
+            napms(TIME);
+        }
+        return;
+    }
+    
+    // все успешно создано присваиваем переменным значения
+    player = temp_hero;
+    player_inv = temp_inv;
+    
     strncpy(player->name, name, MAX_NAME_LENGTH - 1);
     player->name[MAX_NAME_LENGTH - 1] = '\0';
+    strncpy(player_name, name, MAX_NAME_LENGTH - 1);
     
-    inventory_add_item_by_id(player_inv, &global_db, 201, 1);
-    inventory_add_item_by_id(player_inv, &global_db, 202, 1);
-    inventory_add_item_by_id(player_inv, &global_db, 203, 1);
-    inventory_add_item_by_id(player_inv, &global_db, 204, 1);
+    // штаники сапожки курточки
+    if (!inventory_add_item_by_id(player_inv, &global_db, 201, 1) ||!inventory_add_item_by_id(player_inv, &global_db, 202, 1) ||!inventory_add_item_by_id(player_inv, &global_db, 203, 1) ||!inventory_add_item_by_id(player_inv, &global_db, 204, 1)) {
+        // ошибка выделения памяти под предметы
+        if (narrative_win && narrative_win->overlay) {
+            WINDOW *win = narrative_win->overlay;
+            mvwprintw(win, getmaxy(win) - 2, 2, "ошибка на предметах!");
+            wrefresh(win);
+        }
+    }
 
     current_location = 0;
     prev_location = 0;
@@ -139,27 +191,211 @@ void init_new_game(const char *name, int class) {
     player->prev_location = prev_location;
 }
 
-int load_game(const char *name) {
-    char filename[256];
-    snprintf(filename, sizeof(filename), "%s.save", name);
-    
-    FILE *f = fopen(filename, "rb");
-    if (!f) return 0;
-    
-    Hero temp_hero;
-    size_t read = fread(&temp_hero, sizeof(Hero), 1, f);
-    fclose(f);
-    
-    if (read != 1) return 0;
-    
-    player = malloc(sizeof(Hero));
+static int save_current_game(void) {
     if (!player) return 0;
-    memcpy(player, &temp_hero, sizeof(Hero));
     
-    player_inv = create_inventory();
+    char filename[FILE_SIZE];
+    snprintf(filename, sizeof(filename), "%s.save", player_name);
     
-    current_location = player->current_location;
-    prev_location = player->prev_location;
+    FILE *file = fopen(filename, "wb");
+    if (!file) return 0;
+    
+    if (fwrite(player, sizeof(Hero), 1, file) != 1) {
+        fclose(file);
+        return 0;
+    }
+    
+    if (fwrite(&current_location, sizeof(int), 1, file) != 1 ||
+        fwrite(&prev_location, sizeof(int), 1, file) != 1) {
+        fclose(file);
+        return 0;
+    }
+    
+    for (int i = 0; i < 7; i++) {
+        item_template *loc = itemdb_find_by_id(&global_db, 400 + i);
+        if (loc) {
+            int loc_type = loc->template.location_template.type;
+            if (fwrite(&loc_type, sizeof(int), 1, file) != 1) {
+                fclose(file);
+                return 0;
+            }
+        } else {
+            int default_type = LOC_EMPTY; // Если локация не найдена, сохраняем как пустую
+            if (fwrite(&default_type, sizeof(int), 1, file) != 1) {
+                fclose(file);
+                return 0;
+            }
+        }
+    }
+    
+    int count = player_inv->count;
+    if (fwrite(&count, sizeof(int), 1, file) != 1) {
+        fclose(file);
+        return 0;
+    }
+    
+    inventory_node *current = player_inv->head;
+    while (current) {
+        if (fwrite(&current->type, sizeof(item_type), 1, file) != 1 ||
+            fwrite(&current->item_id, sizeof(int), 1, file) != 1) {
+            fclose(file);
+            return 0;
+        }
+        
+        if (current->type == ITEM_ARTIFACT) {
+            if (fwrite(&current->state.artifact_state.is_equipped, sizeof(int), 1, file) != 1) {
+                fclose(file);
+                return 0;
+            }
+        } else if (current->type == ITEM_CONSUMABLE) {
+            if (fwrite(&current->state.consumable_state.quantity, sizeof(int), 1, file) != 1) {
+                fclose(file);
+                return 0;
+            }
+        }
+        
+        current = current->next;
+    }
+    
+    fclose(file);
+    return 1;
+}
+
+static int load_saved_game(const char *save_name) {
+    char filename[FILE_SIZE];
+    snprintf(filename, sizeof(filename), "%s.save", save_name);
+    
+    FILE *file = fopen(filename, "rb");
+    if (!file) return 0;
+    
+    Hero *temp_hero = malloc(sizeof(Hero));
+    if (!temp_hero) {
+        fclose(file);
+        return 0;
+    }
+    
+    if (fread(temp_hero, sizeof(Hero), 1, file) != 1) {
+        free(temp_hero);
+        fclose(file);
+        return 0;
+    }
+    
+    int new_current_loc, new_prev_loc;
+    if (fread(&new_current_loc, sizeof(int), 1, file) != 1 ||fread(&new_prev_loc, sizeof(int), 1, file) != 1) {
+        free(temp_hero);
+        fclose(file);
+        return 0;
+    }
+    
+    int loc_states[7];
+    for (int i = 0; i < 7; i++) {
+        if (fread(&loc_states[i], sizeof(int), 1, file) != 1) {
+            free(temp_hero);
+            fclose(file);
+            return 0;
+        }
+    }
+    
+    inventory *temp_inv = create_inventory();
+    if (!temp_inv) {
+        free(temp_hero);
+        fclose(file);
+        return 0;
+    }
+    
+    int item_count;
+    if (fread(&item_count, sizeof(int), 1, file) != 1) {
+        free_inventory(temp_inv);
+        free(temp_hero);
+        fclose(file);
+        return 0;
+    }
+    
+    for (int i = 0; i < item_count; i++) {
+        item_type type;
+        int item_id;
+        
+        if (fread(&type, sizeof(item_type), 1, file) != 1 || 
+            fread(&item_id, sizeof(int), 1, file) != 1) {
+            free_inventory(temp_inv);
+            free(temp_hero);
+            fclose(file);
+            return 0;
+        }
+        
+        inventory_node *new_node = malloc(sizeof(inventory_node));
+        if (!new_node) {
+            free_inventory(temp_inv);
+            free(temp_hero);
+            fclose(file);
+            return 0;
+        }
+        
+        new_node->type = type;
+        new_node->item_id = item_id;
+        new_node->next = NULL;
+        
+        if (type == ITEM_ARTIFACT) {
+            int is_equipped;
+            if (fread(&is_equipped, sizeof(int), 1, file) != 1) {
+                free(new_node);
+                free_inventory(temp_inv);
+                free(temp_hero);
+                fclose(file);
+                return 0;
+            }
+            new_node->state.artifact_state.is_equipped = is_equipped;
+            
+            if (is_equipped) {
+                for (int slot = 0; slot < MAX_EQUIPPED; slot++) {
+                    if (!temp_inv->equipped[slot]) {
+                        temp_inv->equipped[slot] = new_node;
+                        break;
+                    }
+                }
+            }
+        } else if (type == ITEM_CONSUMABLE) {
+            int quantity;
+            if (fread(&quantity, sizeof(int), 1, file) != 1) {
+                free(new_node);
+                free_inventory(temp_inv);
+                free(temp_hero);
+                fclose(file);
+                return 0;
+            }
+            new_node->state.consumable_state.quantity = quantity;
+        }
+        
+        if (!temp_inv->head) {
+            temp_inv->head = new_node;
+            temp_inv->tail = new_node;
+        } else {
+            temp_inv->tail->next = new_node;
+            temp_inv->tail = new_node;
+        }
+        temp_inv->count++;
+    }
+    
+    fclose(file); 
+    if (player) {
+        destroy_hero(player);
+    }
+    if (player_inv) {
+        free_inventory(player_inv);
+    }
+    
+    player = temp_hero;
+    player_inv = temp_inv;
+    current_location = new_current_loc;
+    prev_location = new_prev_loc;
+    strncpy(player_name, save_name, MAX_NAME_LENGTH);
+    
+    for (int i = 0; i < 7; i++) {
+        item_template *loc = itemdb_find_by_id(&global_db, 400 + i);
+        if (loc) {
+            loc->template.location_template.type = loc_states[i];
+        }
+    }
     
     return 1;
 }
@@ -176,114 +412,122 @@ void show_current_location(item_template *loc) {
         print_wrapped_text(win, description);
         getyx(win, line, col);
         print_hint(win, line+2, max_y, loc);
-        }
+    }
 }
-
 
 void take_treasure(int location_id) {
     item_template *loc = itemdb_find_by_id(&global_db, 400 + location_id);
     if (!loc || loc->template.location_template.type != LOC_TREASURE) return;
     
     int treasure_id = 0;
-    switch (location_id) {
-        case 2:
-            treasure_id = 207;
-            treasure_id = 207;
-            treasure_id = 207;
-            break;
-        case 5:
-            treasure_id = 103;
-            break;
-        default:
-            treasure_id = 103;
-    }
+    for (int i = 0; i<3; i++){
+        switch (location_id) {
+            case 2:
+                treasure_id = 205+i;
+                break;
+            case 5:
+                treasure_id = 101+rand()%5;
+                if(!i){
+                    treasure_id = 101;
+                }
+                break;
+            default:
+                treasure_id = 103;
+        }
     
-    if (inventory_add_item_by_id(player_inv, &global_db, treasure_id, 1)) {
-        item_template *treasure = itemdb_find_by_id(&global_db, treasure_id);
-        if (treasure && narrative_win && narrative_win->overlay) {
-            WINDOW *win = narrative_win->overlay;
-            werase(win);
-            mvwprintw(win, 1, 2, "Вы нашли: %s", treasure->name);
-            mvwprintw(win, 2, 2, "%s", treasure->description);
-            mvwprintw(win, 4, 2, "Нажмите любую клавишу...");
-            wrefresh(win);
-            getch();
+        if (inventory_add_item_by_id(player_inv, &global_db, treasure_id, 3)) {
+            item_template *treasure = itemdb_find_by_id(&global_db, treasure_id);
+            if (treasure && narrative_win && narrative_win->overlay) {
+                WINDOW *win = narrative_win->overlay;
+                werase(win);
+                mvwprintw(win, 1, 2, "Вы нашли: %s", treasure->name);
+                mvwprintw(win, 2, 2, "%s", treasure->description);
+                mvwprintw(win, 4, 2, "Нажмите любую клавишу");
+                wrefresh(win);
+                getch();
+            }
         }
     }
     loc->template.location_template.type = LOC_EMPTY;
 }
 
 void game_loop(void) {
-    int load_result = 0;
-    char save_filename[256];
     srand(time(NULL));
     itemdb_init(&global_db);
     init_default_items(&global_db);
     
     create_game_windows();
     
-    // внешний цикл для перезапуска игры
-    while (1) {
-        echo();
-        memset(player_name, 0, sizeof(player_name));
-        
+    while (!state.quit_flag) {
         if (narrative_win && narrative_win->overlay) {
-            werase(narrative_win->overlay);
-            mvwprintw(narrative_win->overlay, 1, 2, "Введите имя героя:");
-            mvwprintw(narrative_win->overlay, 2, 2, "> ");
-            wrefresh(narrative_win->overlay);
-            wgetnstr(narrative_win->overlay, player_name, MAX_NAME_LENGTH-1);
-        }
-        noecho();
-
-        
-        snprintf(save_filename, sizeof(save_filename), "%s.save", player_name);
-
-        FILE *save_file = fopen(save_filename, "rb");
-        if (save_file) {
-            fclose(save_file);
+            WINDOW *win = narrative_win->overlay;
+            werase(win);
             
-            if (narrative_win && narrative_win->overlay) {
-                WINDOW *win = narrative_win->overlay;
-                werase(win);
-                mvwprintw(win, 1, 2, "Найдено сохранение для %s", player_name);
-                mvwprintw(win, 2, 2, "Загрузить? (Y/N)");
-                wrefresh(win);
-                
+            int max_y, max_x;
+            getmaxyx(win, max_y, max_x);
+            
+            mvwprintw(win, max_y/2 - 2, max_x/2 - 10, "=== ИГРА ===");
+            mvwprintw(win, max_y/2, max_x/2 - 15, "1. Новая игра");
+            mvwprintw(win, max_y/2 + 1, max_x/2 - 15, "2. Загрузить игру");
+            mvwprintw(win, max_y/2 + 2, max_x/2 - 15, "3. Выход");
+            mvwprintw(win, max_y/2 + 4, max_x/2 - 15, "Выберите (1-3): ");
+            
+            wrefresh(win);
+            
+            int choice = 0;
+            while (!choice) {
                 int ch = getch();
-                if (ch == 'y' || ch == 'Y') {
-                    load_result = load_game(player_name);
-                } else {
-                    load_result = 0;
+                if (ch >= '1' && ch <= '3') {
+                    choice = ch - '0';
                 }
             }
-        }
-        
-        // сброс состояния игры
-        state.current_mode = MODE_NARRATIVE;
-        state.previous_mode = MODE_NARRATIVE;
-        state.inventory_selected_index = 0;
-        state.quit_flag = 0;
-        state.restart_flag = 0;
-        
-        if (!load_result) {
-            if (narrative_win && narrative_win->overlay) {
-                chosen_class = choose_class(narrative_win->overlay);
+            
+            if (choice == 1) { 
+                echo();
+                werase(win);
+                mvwprintw(win, 1, 2, "Введите имя героя:");
+                mvwprintw(win, 2, 2, "> ");
+                wrefresh(win);
+                wgetnstr(win, player_name, MAX_NAME_LENGTH-1);
+                noecho();
+                
+                chosen_class = choose_class(win);
                 init_new_game(player_name, chosen_class);
-                chapter1(narrative_win->overlay);
+                chapter1(win);
+                break;
+            }
+            else if (choice == 2) { 
+                echo();
+                werase(win);
+                mvwprintw(win, 1, 2, "Введите имя сохранения:");
+                mvwprintw(win, 2, 2, "> ");
+                wrefresh(win);
+                char save_name[FILE_SIZE];
+                wgetnstr(win, save_name, 255);
+                noecho();
+                
+                if (load_saved_game(save_name)) {
+                    break; 
+                } else {
+                    mvwprintw(win, 4, 2, "Ошибка загрузки! Нажмите любую клавишу...");
+                    wrefresh(win);
+                    getch();
+                }
+            }
+            else if (choice == 3) { 
+                state.quit_flag = 1;
+                break;
             }
         }
-
+    }
+    
+    
+    while (!state.quit_flag && !state.restart_flag) {
         update_panels();
-        doupdate();
+        doupdate();        
+        item_template *loc = itemdb_find_by_id(&global_db, 400 + current_location);
         
-        item_template *loc = itemdb_find_by_id(&global_db, 400);
         
-        if (loc) {
-            show_current_location(loc);
-        }
-        
-        // главный игровой цикл
         while (!state.quit_flag && !state.restart_flag) {
             switch (state.current_mode) {
                 case MODE_NARRATIVE:
@@ -331,6 +575,28 @@ void game_loop(void) {
                         case 'i':
                             open_inventory();
                             break;
+                            
+                        case 's': // Сохранить игру
+                            if (save_current_game()) {
+                                if (narrative_win && narrative_win->overlay) {
+                                    WINDOW *win = narrative_win->overlay;
+                                    werase(win);
+                                    mvwprintw(win, 1, 2, "Игра сохранена");
+                                    mvwprintw(win, 2, 2, "Нажмите любую клавишу");
+                                    wrefresh(win);
+                                    getch();
+                                }
+                            } else {
+                                if (narrative_win && narrative_win->overlay) {
+                                    WINDOW *win = narrative_win->overlay;
+                                    werase(win);
+                                    mvwprintw(win, 1, 2, "Ошибка сохранения");
+                                    mvwprintw(win, 2, 2, "Нажмите любую клавишу");
+                                    wrefresh(win);
+                                    getch();
+                                }
+                            }
+                            break;
                     }
                     break;
                     
@@ -342,9 +608,7 @@ void game_loop(void) {
             doupdate();
         }
         
-        // очистка перед возможным перезапуском
         if (player) {
-            save_hero(player, player_name);
             destroy_hero(player);
             player = NULL;
         }
@@ -357,9 +621,7 @@ void game_loop(void) {
             destroy_inventory_window();
         }
         
-        // ксли нужно перезапустить - продолжаем внешний цикл
         if (state.restart_flag) {
-            // сброс состояния локаций
             for (int i = 1; i < MAX_LOCATIONS; i++) {
                 item_template *loc_item = itemdb_find_by_id(&global_db, 400 + i);
                 if (loc_item) {
@@ -367,14 +629,56 @@ void game_loop(void) {
                         loc_item->template.location_template.original_type;
                 }
             }
-            continue; // начинаем новую игру
+            
+            state.restart_flag = 0;
+            
+            if (narrative_win && narrative_win->overlay) {
+                WINDOW* win = narrative_win->overlay;
+                werase(win);
+                
+                int max_y, max_x;
+                getmaxyx(win, max_y, max_x);
+                
+                mvwprintw(win, max_y/2 - 2, max_x/2 - 15, "Игра завершена!");
+                mvwprintw(win, max_y/2, max_x/2 - 20, "1. Вернуться в главное меню");
+                mvwprintw(win, max_y/2 + 1, max_x/2 - 20, "2. Выйти из игры");
+                mvwprintw(win, max_y/2 + 3, max_x/2 - 15, "Выберите пункт (1-2):");
+                
+                wrefresh(win);
+                
+                int choice = 0;
+                while (!choice) {
+                    int ch = getch();
+                    if (ch == '1') choice = 1;
+                    else if (ch == '2') choice = 2;
+                }
+                
+                if (choice == 1) {
+                    state.quit_flag = 0;
+                    game_loop();
+                    return;
+                } else {
+                    state.quit_flag = 1;
+                }
+            }
         }
-        
-        // выход из игры
-        break;
     }
     
-    endwin();
+    if (player && strlen(player_name) > 0) {
+        save_current_game();
+    }
+    
+    if (player) {
+        destroy_hero(player);
+        player = NULL;
+    }
+    if (player_inv) {
+        free_inventory(player_inv);
+        player_inv = NULL;
+    }
+    if (inventory_win) {
+        destroy_inventory_window();
+    }
 }
 
 int roll_dice(void) {
@@ -414,7 +718,7 @@ void check_level_up(void) {
         mvwprintw(win, 2, 2, "Вы достигли уровня %d!", player->level);
         mvwprintw(win, 3, 2, "Здоровье увеличено!");
         mvwprintw(win, 4, 2, "Характеристики улучшены!");
-        mvwprintw(win, 5, 2, "Нажмите любую клавишу...");
+        mvwprintw(win, 5, 2, "Нажмите любую клавишу");
         wrefresh(win);
         getch();
     }
@@ -436,12 +740,14 @@ void move_to_location(int new_location) {
     }
 }
 
-
 void start_combat(int location_id) {
+    Monster *temp_monster = create_monster(location_id);
+    if (!temp_monster || !narrative_win || !narrative_win->overlay) {
+        if (temp_monster) free(temp_monster);
+        return;
+    }
     
-    Monster *monster = create_monster(location_id);
-    if (!monster || !narrative_win || !narrative_win->overlay) return;
-    
+    Monster *monster = temp_monster;
     WINDOW *win = narrative_win->overlay;
     int combat_ongoing = 1, item_used = 0;
     state.current_mode = MODE_COMBAT;
@@ -483,23 +789,22 @@ void start_combat(int location_id) {
             break;
         
             case 'r':
-                mvwprintw(win, 11, 2, "Вы сбежали!");
                 current_location = prev_location;
                 combat_ongoing = 0;
                 wrefresh(win);
-                napms(1000);
                 break;
         }
         
         if (monster->health <= 0) {
-            end_combat(1);
-            give_monster_loot(monster);
-            combat_ongoing = 0;
-            
             item_template *loc = itemdb_find_by_id(&global_db, 400 + location_id);
             if (loc) {
                 loc->template.location_template.type = LOC_EMPTY;
             }
+            end_combat(1);
+            give_monster_loot(monster);
+            combat_ongoing = 0;
+            
+            
         }
         
         if (player && player->hp <= 0) {
@@ -567,7 +872,7 @@ static void open_inventory_in_combat(void) {
         }
         
         mvwhline(win, getmaxy(win) - 3, 2, ACS_HLINE, getmaxx(win) - 4);
-        mvwprintw(win, getmaxy(win) - 2, 2, "E - Использовать  U - Закрыть инвентарь");
+        mvwprintw(win, getmaxy(win) - 2, 2, "U - Использовать  I - Закрыть инвентарь");
         
         wrefresh(win);
         
@@ -581,25 +886,22 @@ static void open_inventory_in_combat(void) {
                 if (selected_index < player_inv->count - 1) selected_index++;
                 break;
                 
-            case 'e':
-            case 'E':
+            case 'u':
+            case 'U':
                 inventory_node *node = inventory_get_node_at_index(player_inv, selected_index);
                 if (node && node->type == ITEM_CONSUMABLE) {
                     if (inventory_use_consumable(player, player_inv, node, &global_db)) {
                         mvwprintw(win, getmaxy(win) - 1, 2, "Предмет использован!");
                         wrefresh(win);
-                        napms(1000);
+                        napms(TIME);
                         return;
                     }
                 } else if (node && node->type == ITEM_ARTIFACT) {
                     mvwprintw(win, getmaxy(win) - 1, 2, "В бою нельзя экипировать артефакты!");
                     wrefresh(win);
-                    napms(1500);
+                    napms(TIME);
                 }
                 break;
-                
-            case 'u':
-            case 'U':
             case 'i':
             case 'I':
                 inventory_open = 0;
@@ -617,20 +919,20 @@ void player_attack(Monster* monster, int use_magic) {
     
     if (damage > 0) {
         monster->health -= damage;
-        mvwprintw(win, 11, 2, "Вы бросаете кубик: %d", dice_roll);
+        mvwprintw(win, 14, 2, "Вы бросаете кубик: %d", dice_roll);
         if (use_magic) {
-            mvwprintw(win, 12, 2, "Фаербол! Урон: %d", damage);
+            mvwprintw(win, 14, 2, "Фаербол! Урон: %d", damage);
         } else {
-            mvwprintw(win, 12, 2, "Вы нанесли урона: %d", damage);
+            mvwprintw(win, 14, 2, "Вы нанесли урона: %d", damage);
         }
     } else if (use_magic && player->mp < 5) {
-        mvwprintw(win, 11, 2, "Недостаточно маны");
+        mvwprintw(win, 14, 2, "Недостаточно маны");
     } else {
-        mvwprintw(win, 11, 2, "Промах");
+        mvwprintw(win, 14, 2, "Промах");
     }
     
     wrefresh(win);
-    napms(1000);
+    napms(TIME);
 }
 
 void monster_attack_player(Monster* monster) {
@@ -651,7 +953,7 @@ void monster_attack_player(Monster* monster) {
     }
     
     wrefresh(win);
-    napms(1000);
+    napms(TIME);
 }
 
 void end_combat(int victory) {
@@ -662,7 +964,7 @@ void end_combat(int victory) {
     if (victory) {
         mvwprintw(win, 17, 2, "ПОБЕДА!");
         
-        int exp_gained = 10 + (current_location * 5);
+        int exp_gained = 20 + (current_location * 5);
         if (player) {
             player->exp += exp_gained;
             mvwprintw(win, 18, 2, "Получено опыта: %d", exp_gained);
@@ -685,7 +987,12 @@ static void create_inventory_window(void) {
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     
-    inventory_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Inventory==");
+    curw *temp_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Inventory==");
+    if (!temp_win) {
+        return;
+    }
+    
+    inventory_win = temp_win;
     
     if (player_inv && inventory_win) {
         player_inv->win = inventory_win->overlay;
@@ -840,31 +1147,9 @@ void game_over() {
     }
     
     if (choice == 1) {
-        state.restart_flag = 1;  // ← ИСПРАВЛЕНО: используем restart_flag
+        state.restart_flag = 1;
     } else {
         state.quit_flag = 1;
-    }
-}
-
-void victory_screen(void) {
-    if (!narrative_win || !narrative_win->overlay) return;
-    
-    final(narrative_win->overlay);
-    state.quit_flag = 1;
-}
-
-void save_game(void) {
-    if (!player) return;
-    
-    save_hero(player, player->name);
-    
-    WINDOW *win = narrative_win ? narrative_win->overlay : NULL;
-    if (win) {
-        werase(win);
-        mvwprintw(win, 1, 2, "Игра сохранена!");
-        mvwprintw(win, 2, 2, "Нажмите любую клавишу...");
-        wrefresh(win);
-        getch();
     }
 }
 
@@ -886,19 +1171,16 @@ void print_hint(WINDOW *win, int line, int max_y, item_template *loc){
         }
     }
         
-    if (exit_count == 0 && line < max_y - 2) {
-        mvwprintw(win, line++, 4, "Нет доступных путей");
-    }
-        
     line += 2;
     if (line < max_y - 2) {
         switch (loc->template.location_template.type) {
             case LOC_MONSTER:
-                mvwprintw(win, line++, 2, "Кажется вас заметил монстр.");
+                mvwprintw(win, line++, 2, "Кажется вас заметил противник.");
                 mvwprintw(win, line++, 2, "A - Атаковать");
                 break;
             case LOC_TREASURE:
                 if (line < max_y - 2) {
+                    mvwprintw(win, line++, 2, "Тут что-то очень привлекательно лежит...");
                     mvwprintw(win, line++, 2, "T - Взять");
                 }
                 break;
@@ -907,7 +1189,7 @@ void print_hint(WINDOW *win, int line, int max_y, item_template *loc){
         
     line += 2;
     if (line < max_y - 2) {
-        mvwprintw(win, line++, 2, "I - Инвентарь  Q - Выход");
+        mvwprintw(win, line++, 2, "I - Инвентарь  Q - Выход  S - Сохранить");
     }
     wrefresh(win);
 }
@@ -922,22 +1204,20 @@ static void give_monster_loot(Monster* monster) {
     
     mvwprintw(win, max_y/2, max_x/2 - 10, "Вы победили %s!", monster->name);
     
-    // Проверяем, если это последний монстр (лабаз)
-    if (current_location == 6) { // Лабаз в корнях
-        mvwprintw(win, max_y/2 + 2, max_x/2 - 10, "Вы достигли своей цели!");
-        mvwprintw(win, max_y/2 + 3, max_x/2 - 15, "Поздравляем с завершением игры!");
+    if (current_location == 6) { // победили дозорного и валим
+        mvwprintw(win, max_y/2, max_x/2 - 10, "Вы достигли своей цели!");
+        mvwprintw(win, max_y/2, max_x/2 - 15, "Поздравляем с завершением игры!");
         wrefresh(win);
-        napms(2000);
-        
-        // Показываем финальную заставку и спрашиваем о перезапуске
+        napms(2*TIME);
+        save_current_game();
         int want_restart = final(win);
         
         if (want_restart) {
-            state.restart_flag = 1;  // ← Устанавливаем флаг перезапуска
+            state.restart_flag = 1;
         } else {
-            state.quit_flag = 1;     // ← Устанавливаем флаг выхода
+            state.quit_flag = 1;
         }
-        return; // Выходим из функции
+        return;
     }
     
     int line = 4;

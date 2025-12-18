@@ -24,8 +24,8 @@ typedef struct{
 
 typedef struct {
     consumable_type type;   
-    int power;         //сила эффекта
-    int duration;
+    int power;
+    int duration;         //сила эффекта
 }consumable;
 
 

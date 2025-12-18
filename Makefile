@@ -8,10 +8,10 @@ CFLAGS = -Wall -Wextra -O2 -mconsole $(INC) -D_UNICODE -DUNICODE -DPDC_FORCE_UTF
 SRCS = main.c game.c interface.c history.c inventory.c hero.c database.c monster.c combat.c
 OBJS = $(SRCS:.c=.o)
 
-all: test.exe
+all: dungeon.exe
 
-test.exe: $(OBJS)
-	$(CC) $(OBJS) -o test.exe $(LDD) $(LDFLAGS)
+dungeon.exe: $(OBJS)
+	$(CC) $(OBJS) -o dungeon.exe $(LDD) $(LDFLAGS)
 
 main.o: main.c game.h
 	$(CC) $(CFLAGS) -c main.c -o main.o
@@ -41,10 +41,9 @@ combat.o: combat.c combat.h hero.h monster.h
 	$(CC) $(CFLAGS) -c combat.c -o combat.o
 clean:
 	if exist *.o del *.o
-	if exist test.exe del test.exe
-	if exist *.save del *.save
-run: test.exe
-	test.exe
+	if exist dungeon.exe del dungeon.exe
+run: dungeon.exe
+	cmd.exe /c start cmd.exe /k dungeon.exe
 
 rebuild: clean all
 

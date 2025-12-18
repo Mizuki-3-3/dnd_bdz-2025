@@ -37,33 +37,30 @@ int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int
 
     item_template* template = itemdb_find_by_id(db, item_id);
     if (!template) {
-        return 0;  // Предмет не найден в базе
+        return 0; 
     }
 
     inventory_node *new_node = malloc(sizeof(inventory_node));
     if (!new_node) {
-        return 0;  // память не выделилась под элемент в инвентаре
+        return 0;  
     }
     
     new_node->item_id = item_id;
     new_node->next = NULL;
 
-    // Определяем тип предмета по ID
     if (item_id >= 200 && item_id < 300) {
-        // Артефакты: 200-299
+        // артефакты: 200-299
         new_node->type = ITEM_ARTIFACT;
         new_node->state.artifact_state.is_equipped = 0;  // Не надет
     } else if (item_id >= 100 && item_id < 200) {
-        // Расходники: 100-199
+        // расходники: 100-199
         new_node->type = ITEM_CONSUMABLE;
         new_node->state.consumable_state.quantity = quantity;
     } else {
-        // Монстры (300-399) и локации (400-499) не должны быть в инвентаре
         free(new_node);
         return 0;
     }
-    
-    // Добавляем в список
+    //добавим
     if (!inv->head) {
         inv->head = new_node;
         inv->tail = new_node;
@@ -81,11 +78,10 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
     
     if (!inv->head) return 0;
     
-    // Если удаляем первый элемент
+    // если удаляем первый элемент
     if (inv->head == node_to_remove) {
         inventory_node *temp = inv->head;
         
-        // Если предмет был экипирован - снимаем
         if (temp->type == ITEM_ARTIFACT && temp->state.artifact_state.is_equipped) {
             for (int i = 0; i < MAX_EQUIPPED; i++) {
                 if (inv->equipped[i] == temp) {
@@ -99,7 +95,7 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
         free(temp);
         inv->count--;
         
-        // Если список стал пустым
+        // если список стал пустым
         if (!inv->head) {
             inv->tail = NULL;
         }
@@ -107,13 +103,12 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
         return 1;
     }
     
-    // Ищем элемент в списке
     inventory_node *current = inv->head;
     while (current->next && current->next != node_to_remove) {
         current = current->next;
     }
     
-    if (!current->next) return 0;  // Элемент не найден
+    if (!current->next) return 0;  
     
     inventory_node *temp = current->next;
     current->next = temp->next;
@@ -122,7 +117,6 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
         inv->tail = current;
     }
     
-    // Если предмет был экипирован - снимаем
     if (temp->type == ITEM_ARTIFACT && temp->state.artifact_state.is_equipped) {
         for (int i = 0; i < MAX_EQUIPPED; i++) {
             if (inv->equipped[i] == temp) {
@@ -154,21 +148,14 @@ int inventory_equip_artifact(inventory *inv, inventory_node *node, equipment_slo
     if (!inv || !node || slot < 0 || slot >= MAX_EQUIPPED) {
         return 0;
     }
-    
-    // Проверяем, что это артефакт
     if (node->type != ITEM_ARTIFACT) {
         return 0;
     }
-    
-    // Снимаем предыдущий предмет из этого слота
     if (inv->equipped[slot]) {
         inv->equipped[slot]->state.artifact_state.is_equipped = 0;
     }
-    
-    // Экипируем новый
     inv->equipped[slot] = node;
     node->state.artifact_state.is_equipped = 1;
-    
     return 1;
 }
 
@@ -209,7 +196,8 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
         mvwprintw(inv->win, line++, 2, "MP: %d/%d", hero->mp, hero->max_mp);
         mvwprintw(inv->win, line++, 2, "Сила: %d Ловк: %d", hero->strength, hero->dexterity);
         mvwprintw(inv->win, line++, 2, "Магия: %d", hero->magic);
-        line++; // Пустая строка
+        mvwprintw(inv->win, line++, 2, "слоты: [%d/%d]", inv->count,inv->max_slots);
+        line++; // пустая строка
     }
     
     mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
@@ -254,8 +242,8 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
     // подсказки
     if (line < max_y - 2) {
         line = max_y - 3;
-        mvwprintw(inv->win, line++, 2, "E/U - Использовать  D - Выбросить");
-        mvwprintw(inv->win, line++, 2, "ESC/I - Закрыть");
+        mvwprintw(inv->win, line++, 2, "E - Использовать  D - Выбросить");
+        mvwprintw(inv->win, line++, 2, "I - Закрыть");
     }
     
     wrefresh(inv->win);
@@ -283,7 +271,7 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
         case STRENGTH_POT:
         case DEXTERITY_POT:
         case MAGIC_POT:
-            // Добавляем временный эффект
+            // добавляем временный эффект
             if (hero->effect_count < MAX_CONSUMABLE_EFFECTS) {
                 hero->active_effects[hero->effect_count].type = cons->type;
                 hero->active_effects[hero->effect_count].power = cons->power;

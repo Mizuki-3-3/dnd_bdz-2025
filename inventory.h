@@ -58,7 +58,7 @@ int inventory_unequip_artifact(inventory *inv, equipment_slot slot);
 void free_inventory(inventory *inv);
 void display_inventory(inventory *inv, item_database *db, Hero *hero, int selected_index);
 
-// Функции использования предметов
+// функции использования предметов
 int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, item_database *db);
 void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db);
 int inventory_remove_item(inventory *inv, inventory_node *node_to_remove);
