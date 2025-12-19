@@ -15,7 +15,7 @@ void itemdb_init(item_database* db) {
 }
 
 item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, artifact_type type, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id) {
-    if (!db || db->count >= MAX_ITEMS) return NULL;
+    if (db->count >= MAX_ITEMS) return NULL;
     
     item_template* item = &db->items[db->count];
     memset(item, 0, sizeof(item_template));
@@ -43,7 +43,7 @@ item_template* itemdb_create_artifact(item_database* db, const char* name, const
 }
 
 item_template* itemdb_create_consumable(item_database* db, const char* name, consumable_type type, int power, int duration, int id) {
-    if (!db || db->count >= MAX_ITEMS) return NULL;
+    if (db->count >= MAX_ITEMS) return NULL;
     item_template* item = &db->items[db->count];
     memset(item, 0, sizeof(item_template));
     
@@ -62,7 +62,7 @@ item_template* itemdb_create_consumable(item_database* db, const char* name, con
 }
 
 item_template* itemdb_create_location(item_database* db, const char* name, const char* desc, int exits_count, loc_type type, int id){
-    if (!db || db->count >= MAX_ITEMS) return NULL;
+    if (db->count >= MAX_ITEMS) return NULL;
     
     item_template* loc = &db->items[db->count];
     

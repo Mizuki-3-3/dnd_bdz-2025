@@ -7,12 +7,9 @@ Hero* create_hero(const char* name, int class) {
     Hero* h = malloc(sizeof(Hero));
     if (!h) return 0;
 
-    if (name && strlen(name) > 0){
+    if (name){
         if (!h) return NULL;
         strncpy(h->name, name, MAX_NAME_LENGTH - 1);
-        h->name[MAX_NAME_LENGTH - 1] = '\0';
-    }else{
-        strncpy(h->name, "Браконьер", MAX_NAME_LENGTH - 1);
         h->name[MAX_NAME_LENGTH - 1] = '\0';
     }
     switch (class){
@@ -67,7 +64,6 @@ void destroy_hero(Hero* hero) {
 }
 
 void level_up(Hero *hero, inventory *inv) {
-    if (!hero) return;
     
     if (hero->exp >= hero->exp_to_next) {
         hero->level++;
@@ -93,7 +89,6 @@ void level_up(Hero *hero, inventory *inv) {
 }
 
 void heal_hero(Hero *hero, int amount) {
-    if (!hero) return;
     
     hero->hp += amount;
     if (hero->hp > hero->max_hp) {
@@ -102,7 +97,7 @@ void heal_hero(Hero *hero, int amount) {
 }
 
 void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
-    if (!hero || hero->effect_count >= MAX_CONSUMABLE_EFFECTS) return;
+    if (hero->effect_count >= MAX_CONSUMABLE_EFFECTS) return;
     
     hero->active_effects[hero->effect_count].type = type;
     hero->active_effects[hero->effect_count].power = power;
@@ -125,14 +120,12 @@ void apply_effect(Hero *hero, consumable_type type, int power, int duration) {
 }
 
 void update_effects(Hero *hero) {
-    if (!hero) return;
-    
     for (int i = 0; i < hero->effect_count; i++) {
         hero->active_effects[i].remaining_duration--;
         
-        // Если эффект закончился, убираем его
+        // если эффект закончился, убираем его
         if (hero->active_effects[i].remaining_duration <= 0) {
-            // Убираем бонус
+            // убираем бонус
             switch (hero->active_effects[i].type) {
                 case STRENGTH_POT:
                     hero->strength -= hero->active_effects[i].power;

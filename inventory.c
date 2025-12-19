@@ -3,7 +3,7 @@
 #include "hero.h"
 #include <stdlib.h>
 #include <string.h>
-
+#define MAX_ITEM_DESC 70
 inventory* create_inventory(void) {
     inventory *inv = malloc(sizeof(inventory));
     if (!inv) return NULL;
@@ -26,9 +26,6 @@ void inventory_update_capacity(inventory *inv, int player_level) {
 }
 
 int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int quantity) {
-    if (!inv || !db) {
-        return 0; 
-    }
     
     if (inv->count >= inv->max_slots) {
         return -1;  // Инвентарь переполнен
@@ -152,7 +149,7 @@ equipment_slot get_slot_for_artifact_type(artifact_type type) {
 }
 
 int inventory_equip_artifact(inventory *inv, inventory_node *node, item_database *db) {
-    if ( node->type != ITEM_ARTIFACT) {
+    if (node->type != ITEM_ARTIFACT) {
         return 0;
     }
     
@@ -212,95 +209,165 @@ void free_inventory(inventory *inv) {
     free(inv);
 }
 void display_inventory(inventory *inv, item_database *db, Hero *hero, int selected_index) {
-    if (!inv || !inv->win || !db) return;
+    if (!inv->win) return;
     
     werase(inv->win);
-    int line = 1;
-    int max_y = getmaxy(inv->win);
-    int max_x = getmaxx(inv->win);
+    int line = 1,max_y = getmaxy(inv->win), max_x = getmaxx(inv->win);
     
-    // Проверяем минимальные размеры окна
-    if (max_x < 40 || max_y < 10) {
+    if (max_x < 80 || max_y < 20) {
         mvwprintw(inv->win, 1, 1, "Окно слишком мало!");
         wrefresh(inv->win);
         return;
     }
     
+    int left_width = max_x / 2 - 4, right_column = max_x / 2 + 2;
+    
+    // ЛЕВАЯ ЧАСТЬ
     if (hero) {
-        // ЛЕВАЯ ЧАСТЬ: статистика героя и список предметов
         mvwprintw(inv->win, line++, 2, "=== %s ===", hero->name);
-        mvwprintw(inv->win, line++, 2, "Уровень: %d", hero->level);
+        mvwprintw(inv->win, line++, 2, "Уровень: %d  Опыт: %d/%d", hero->level, hero->exp, hero->exp_to_next);
         mvwprintw(inv->win, line++, 2, "HP: %d/%d", hero->hp, hero->max_hp);
         mvwprintw(inv->win, line++, 2, "MP: %d/%d", hero->mp, hero->max_mp);
-        mvwprintw(inv->win, line++, 2, "Сила: %d Ловк: %d", hero->strength, hero->dexterity);
+        mvwprintw(inv->win, line++, 2, "Сила: %d ", hero->strength);
+        mvwprintw(inv->win, line++, 2, "Ловкость: %d", hero->dexterity);
         mvwprintw(inv->win, line++, 2, "Магия: %d", hero->magic);
-        mvwprintw(inv->win, line++, 2, "Слоты: [%d/%d]", inv->count, inv->max_slots);
-        line++; // пустая строка
+        mvwhline(inv->win, line++, 0, ACS_HLINE, max_x/2);
         
-        // ПРАВАЯ ЧАСТЬ: экипировка
-        int right_line = 1;
-        mvwprintw(inv->win, right_line++, max_x/2 + 2, "=== Экипировка ===");
+        int total_str_bonus = 0, total_dex_bonus = 0, total_mag_bonus = 0;
+        mvwprintw(inv->win, line++, 2, "=== ЭКИПИРОВКА ===");
+        
         for (int i = 0; i < MAX_EQUIPPED; i++) {
             if (inv->equipped[i]) {
                 item_template* item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
-                if (item) {
-                    mvwprintw(inv->win, right_line++, max_x/2 + 2, "%s: %s", get_slot_name(i), item->name);
+                if (item){
+                    artifact *art = &item->template.artifact_template;
+                    total_str_bonus += art->strength_bonus;
+                    total_dex_bonus += art->dexterity_bonus;
+                    total_mag_bonus += art->magic_bonus;
+                    mvwprintw(inv->win, line, 2, "%s:", get_slot_name(i));
+                    mvwprintw(inv->win, line, 12, "%s", item->name);
+                    line++;
                 }
             } else {
-                mvwprintw(inv->win, right_line++, max_x/2 + 2, "%s: [пусто]", get_slot_name(i));
+                mvwprintw(inv->win, line, 2, "%s:", get_slot_name(i));
+                mvwprintw(inv->win, line, 12, "[пусто]");
+                line++;
             }
         }
+        mvwhline(inv->win,line++,0,ACS_HLINE,max_x/2);
+        mvwprintw(inv->win, line++, 2, "=== БОНУСЫ ЭКИПИРОВКИ ===");
+        mvwprintw(inv->win, line++, 2, "Сила: +%d", total_str_bonus);
+        mvwprintw(inv->win, line++, 2, "Ловкость: +%d", total_dex_bonus);
+        mvwprintw(inv->win, line++, 2, "Магия: +%d", total_mag_bonus);
         
-        // Рисуем вертикальную линию между частями
-        int line_height = (line > 9 ? line : 9) - 1;
-        if (line_height > max_y - 2) line_height = max_y - 2;
-        if (line_height > 0) {
-            mvwvline(inv->win, 1, max_x/2, ACS_VLINE, line_height);
-        }
-        mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
+        line++; // пустая строка
+        
+    }
+    if (max_y > 2) {
+        mvwvline(inv->win, 1, max_x/2, ACS_VLINE, max_y - 2);
     }
     
-    // Вывод списка предметов (продолжение левой части)
+    // ПРАВАЯ ЧАСТЬ
+    int right_line = 1;
+    mvwprintw(inv->win, right_line++, right_column, "=== ИНВЕНТАРЬ ===");
+    mvwprintw(inv->win, right_line++, right_column, "Слоты: [%d/%d]", inv->count, inv->max_slots);
     inventory_node *current = inv->head;
     int index = 0;
     
-    while (current && line < max_y - 3) {
+    while (current && right_line < max_y - 5) { // oставляем место для описания и подсказок
         item_template* template = itemdb_find_by_id(db, current->item_id);
         if (!template) {
             current = current->next;
             index++;
             continue;
         }
-        
         if (index == selected_index) {
             wattron(inv->win, A_REVERSE);
         }
         
-        char display[80];
+        char display_name[MAX_NAME_LENGTH];
         if (current->type == ITEM_ARTIFACT) {
             char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
-            snprintf(display, sizeof(display), "%c %s", equipped, template->name);
+            snprintf(display_name, sizeof(display_name), "%c %s", equipped, template->name);
         } else {
-            snprintf(display, sizeof(display), "  %s x%d", 
-                    template->name, current->state.consumable_state.quantity);
+            snprintf(display_name, sizeof(display_name), "  %s x%d", 
+                    template->name, 
+                    current->state.consumable_state.quantity);
         }
-        display[sizeof(display) - 1] = '\0';
-        
-        mvwprintw(inv->win, line, 2, "%s", display);
+        display_name[sizeof(display_name) - 1] = '\0';
+        mvwprintw(inv->win, right_line, right_column, "%s", display_name);
         
         if (index == selected_index) {
             wattroff(inv->win, A_REVERSE);
         }
         
         current = current->next;
-        line++;
+        right_line++;
         index++;
     }
     
-    // Подсказки
-    mvwprintw(inv->win, max_y - 3, 2, "E - Использовать  D - Выбросить");
-    mvwprintw(inv->win, max_y - 2, 2, "I - Закрыть инвентарь");
-    
+    mvwhline(inv->win, max_y - 6, 2, ACS_HLINE, max_x - 4);
+    //описание выбранного предмета
+    inventory_node *selected_node = inventory_get_node_at_index(inv, selected_index);
+    if (selected_node) {
+        item_template* template = itemdb_find_by_id(db, selected_node->item_id);
+        if (template) {
+            int desc_line = max_y - 5;
+            
+            if (selected_node->type == ITEM_ARTIFACT) {
+                artifact *art = &template->template.artifact_template;
+                mvwprintw(inv->win, desc_line++, 2, "%s", template->description);
+                char bonuses[MAX_ITEM_DESC];
+                snprintf(bonuses, sizeof(bonuses), 
+                        "Бонусы: Сила +%d, Ловкость +%d, Магия +%d",
+                        art->strength_bonus, art->dexterity_bonus, art->magic_bonus);
+                bonuses[sizeof(bonuses) - 1] = '\0';
+                
+                if (strlen(bonuses) > max_x - 4) {
+                    bonuses[max_x - 7] = '\0';
+                    strcat(bonuses, "...");
+                }
+                
+                mvwprintw(inv->win, desc_line, 2, "%s", bonuses);
+                
+            } else {
+                consumable *cons = &template->template.consumable_template;
+                
+                const char* cons_type = "";
+                switch (cons->type) {
+                    case HEALTH_POT: cons_type = "Здоровье"; break;
+                    case MANA_POT: cons_type = "Мана"; break;
+                    case STRENGTH_POT: cons_type = "Сила"; break;
+                    case DEXTERITY_POT: cons_type = "Ловкость"; break;
+                    case MAGIC_POT: cons_type = "Магия"; break;
+                    default: cons_type = "Неизвестно";
+                }
+                mvwprintw(inv->win, desc_line++, 2, "%s", template->description);
+                
+                char effect[MAX_ITEM_DESC];
+                if (cons->type == HEALTH_POT || cons->type == MANA_POT) {
+                    snprintf(effect, sizeof(effect), 
+                            "Восстанавливает %d единиц %s мгновенно",
+                            cons->power, cons_type);
+                } else {
+                    snprintf(effect, sizeof(effect), 
+                            "Увеличивает %s на %d на %d ходов",
+                            cons_type, cons->power, cons->duration);
+                }
+                effect[sizeof(effect) - 1] = '\0';
+                //слишком длинное
+                if (strlen(effect) > max_x - 4) {
+                    effect[max_x - 7] = '\0';
+                    strcat(effect, "...");
+                }
+                
+                mvwprintw(inv->win, desc_line, 2, "%s", effect);
+            }
+        }
+    }
+    // подсказки
+    mvwhline(inv->win, max_y - 3, 2, ACS_HLINE, max_x - 4);
+    mvwprintw(inv->win, max_y - 2, 2, "E - Использовать/Экипировать  D - Выбросить  I - Выход");
     wrefresh(inv->win);
 }
 

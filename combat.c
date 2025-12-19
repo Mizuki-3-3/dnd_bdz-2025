@@ -3,7 +3,6 @@
 #include <time.h>
 
 int calculate_player_damage(Hero *hero, int is_magic, int dice_roll) {
-    if (!hero) return 0;
     int damage = 0;
     if (is_magic) {
         damage = hero->magic + dice_roll;
@@ -24,23 +23,18 @@ int calculate_player_damage(Hero *hero, int is_magic, int dice_roll) {
 }
 
 int calculate_monster_damage(Monster *monster, Hero *player, int dice_roll) {
-    if (!monster || !player) return 0;
     int damage = monster->strength + dice_roll;
-    
     // каждые 5 ловкости снижают урон на 1
     int dodge_bonus = player->dexterity / 5;
     damage -= dodge_bonus;
-    
     // урон не может быть меньше 1
     if (damage < 1) {
         damage = 1;
     }
-    
     return damage;
 }
 
 int check_dodge(Hero *player) {
-    if (!player) return 0;
     
     int dodge_chance = player->dexterity / 10;
     if (dodge_chance > 50) dodge_chance = 50; // Максимум 50%
@@ -53,8 +47,6 @@ int check_dodge(Hero *player) {
 }
 
 int check_crit(Hero *hero) {
-    if (!hero) return 0;
-
     int crit_chance = hero->dexterity / 20;
     if (crit_chance > 25) crit_chance = 25; // Максимум 25%
     

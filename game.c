@@ -26,7 +26,7 @@ int chosen_class;
 #define FILE_SIZE 256
 #define MAX_LOCATIONS 7
 
-static int location_connections[7][7] = {// Матрица смежности локаций 
+static int location_connections[7][7] = {// матрица смежности локаций 
     {0, 1, 1, 0, 0, 0, 0},  // 0 - Берег реки
     {1, 0, 0, 1, 0, 0, 0},  // 1 - Часовня
     {1, 0, 0, 1, 0, 0, 0},  // 2 - Пещера масок
@@ -71,11 +71,9 @@ void create_game_windows(void) {
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     
-    // Создаем временный указатель для narrative_win
+    // Создаем временный указатель
     curw *temp_win = make_new_win(1, 1, max_y - 2, max_x - 2, "==Dungeon==");
     if (!temp_win) {
-        // Обработка ошибки: не удалось создать окно
-        // Можно вывести сообщение об ошибке
         mvwprintw(stdscr, max_y/2, max_x/2 - 10, "Ошибка создания окна!");
         wrefresh(stdscr);
         napms(TIME);
@@ -92,25 +90,25 @@ void create_game_windows(void) {
 
 int choose_class(WINDOW *win, int max_y, int max_x) {
     if (!win) return 1;
-    
+    int line = max_y/2 - 7, col = max_x/2 - 12;
     werase(win);
     
-    mvwprintw(win, max_y/2 - 7, max_x/2 - 13, "Выберите класс персонажа:");
-    mvwprintw(win, max_y/2-6, max_x/2 - 13, "1. Маг");
-    mvwprintw(win,  max_y/2-5, max_x/2 - 13, " - Высокий урон магией");
-    mvwprintw(win,  max_y/2-4, max_x/2 - 13, " - Меньше здоровья");
-    
-    mvwprintw(win,  max_y/2-2, max_x/2 - 13, "2. Воин");
-    mvwprintw(win, max_y/2-1, max_x/2 - 13, "   - Высокое здоровье и сила");
-    mvwprintw(win, max_y/2, max_x/2 - 13, "   - Меньше маны");
-    
-    mvwprintw(win, max_y/2+2, max_x/2 - 13, "3. Плут");
-    mvwprintw(win, max_y/2+3, max_x/2 - 13, "   - Высокая ловкость");
-    mvwprintw(win, max_y/2+4, max_x/2 - 13, "   - Критические удары");
-    
-    mvwprintw(win, max_y+6, max_x/2 - 13, "Выберите 1, 2 или 3");
+    mvwprintw(win, line++, col, "Выберите класс персонажа:");
+    mvwprintw(win, line++, col, "1. Маг");
+    mvwprintw(win, line++, col, " - Высокий урон магией");
+    mvwprintw(win, line++, col, " - Меньше здоровья");
+    line++;
+    mvwprintw(win, line++, col, "2. Воин");
+    mvwprintw(win, line++, col, " - Высокое здоровье и сила");
+    mvwprintw(win, line++, col, " - Меньше маны");
+    line++;
+    mvwprintw(win, line++, col, "3. Плут");
+    mvwprintw(win, line++, col, " - Высокая ловкость");
+    mvwprintw(win, line++, col, " - Критические удары");
+    line++;
+    mvwprintw(win, line++, col, "Выберите 1, 2 или 3");
     wrefresh(win);
-    
+    line++;
     int choice;
     while (1) {
         choice = getch() - '0';
@@ -118,9 +116,8 @@ int choose_class(WINDOW *win, int max_y, int max_x) {
         if (choice >= 1 && choice <= 3) {
             break;
         } else {
-            mvwprintw(win, 16, 2, "Неверный выбор! Введите 1, 2 или 3");
-            mvwprintw(win, 15, 14, "   ");
-            wmove(win, 15, 14);
+            mvwprintw(win,line++, col, "Неверный выбор! Введите 1, 2 или 3");
+            wmove(win, line++, col);
             wrefresh(win);
         }
     }
@@ -826,7 +823,7 @@ void start_combat(int location_id) {
 }
 
 static void open_inventory_in_combat(void) {
-    if (!player_inv || !narrative_win || !narrative_win->overlay) return;
+    if (!player_inv || !player || !narrative_win || !narrative_win->overlay) return;
     
     WINDOW *win = narrative_win->overlay;
     int inventory_open = 1;
@@ -835,16 +832,56 @@ static void open_inventory_in_combat(void) {
     while (inventory_open) {
         werase(win);
         
-        mvwprintw(win, 1, 2, "=== Inventory===");
-        mvwprintw(win, 2, 2, "Здоровье: %d/%d", player->hp, player->max_hp);
-        mvwprintw(win, 3, 2, "Мана: %d/%d", player->mp, player->max_mp);
-        mvwhline(win, 4, 2, ACS_HLINE, getmaxx(win) - 4);
+        int max_y = getmaxy(win);
+        int max_x = getmaxx(win);
         
+        // Верхняя часть: статы героя
+        mvwprintw(win, 1, 2, "=== ИНВЕНТАРЬ ===");
+        mvwprintw(win, 2, 2, "HP: %d/%d", player->hp, player->max_hp);
+        mvwprintw(win, 3, 2, "MP: %d/%d", player->mp, player->max_mp);
+        mvwprintw(win, 4, 2, "Сила: %d (+%d)", 
+                  player->base_strength, 
+                  player->strength - player->base_strength);
+        mvwprintw(win, 5, 2, "Ловкость: %d (+%d)", 
+                  player->base_dexterity, 
+                  player->dexterity - player->base_dexterity);
+        mvwprintw(win, 6, 2, "Магия: %d (+%d)", 
+                  player->base_magic, 
+                  player->magic - player->base_magic);
+        
+        // Активные эффекты расходников
+        int line = 8;
+        if (player->effect_count > 0) {
+            mvwprintw(win, line++, 2, "Активные эффекты:");
+            for (int i = 0; i < player->effect_count && line < max_y - 10; i++) {
+                const char* effect_name = "";
+                switch (player->active_effects[i].type) {
+                    case STRENGTH_POT: effect_name = "Сила"; break;
+                    case DEXTERITY_POT: effect_name = "Ловкость"; break;
+                    case MAGIC_POT: effect_name = "Магия"; break;
+                    case HEALTH_POT: effect_name = "Здоровье"; break;
+                    case MANA_POT: effect_name = "Мана"; break;
+                    default: effect_name = "Неизвестно";
+                }
+                mvwprintw(win, line++, 4, "%s: +%d (%d ходов)", 
+                         effect_name,
+                         player->active_effects[i].power,
+                         player->active_effects[i].remaining_duration);
+            }
+            line++;
+        }
+        
+        // Разделитель
+        if (line < max_y - 5) {
+            mvwhline(win, line++, 2, ACS_HLINE, max_x - 4);
+        }
+        
+        // Список предметов
         inventory_node *current = player_inv->head;
         int index = 0;
-        int line = 5;
+        int items_start_line = line;
         
-        while (current && line < getmaxy(win) - 5) {
+        while (current && line < max_y - 5) {
             item_template* template = itemdb_find_by_id(&global_db, current->item_id);
             if (!template) {
                 current = current->next;
@@ -856,19 +893,55 @@ static void open_inventory_in_combat(void) {
                 wattron(win, A_REVERSE);
             }
             
-            char display[80];
+            char display[100];
             if (current->type == ITEM_CONSUMABLE) {
-                snprintf(display, sizeof(display), "  %s x%d", 
-                        template->name, current->state.consumable_state.quantity);
+                consumable *cons = &template->template.consumable_template;
+                snprintf(display, sizeof(display), "  %s x%d (+%d)", 
+                        template->name, 
+                        current->state.consumable_state.quantity,
+                        cons->power);
             } else {
-                snprintf(display, sizeof(display), "  %s", template->name);
+                char equipped = current->state.artifact_state.is_equipped ? 'E' : ' ';
+                artifact *art = &template->template.artifact_template;
+                snprintf(display, sizeof(display), "%c %s", equipped, template->name);
             }
             display[sizeof(display) - 1] = '\0';
             
-            mvwprintw(win, line, 4, "%s", display);
+            mvwprintw(win, line, 2, "%s", display);
             
             if (index == selected_index) {
                 wattroff(win, A_REVERSE);
+                
+                // Показываем описание выбранного предмета
+                int desc_line = max_y - 4;
+                if (desc_line > line) {
+                    char desc_line_text[100];
+                    if (current->type == ITEM_CONSUMABLE) {
+                        consumable *cons = &template->template.consumable_template;
+                        snprintf(desc_line_text, sizeof(desc_line_text), 
+                                "%s: сила %d, длительность %d", 
+                                template->description,
+                                cons->power,
+                                cons->duration);
+                    } else {
+                        artifact *art = &template->template.artifact_template;
+                        snprintf(desc_line_text, sizeof(desc_line_text), 
+                                "%s: сила +%d, ловк. +%d, маг. +%d", 
+                                template->description,
+                                art->strength_bonus,
+                                art->dexterity_bonus,
+                                art->magic_bonus);
+                    }
+                    
+                    // Обрезаем, если слишком длинное
+                    int max_len = max_x - 4;
+                    if (strlen(desc_line_text) > max_len) {
+                        desc_line_text[max_len] = '\0';
+                        strcat(desc_line_text, "...");
+                    }
+                    
+                    mvwprintw(win, max_y - 4, 2, "%s", desc_line_text);
+                }
             }
             
             current = current->next;
@@ -876,8 +949,9 @@ static void open_inventory_in_combat(void) {
             index++;
         }
         
-        mvwhline(win, getmaxy(win) - 3, 2, ACS_HLINE, getmaxx(win) - 4);
-        mvwprintw(win, getmaxy(win) - 2, 2, "U - Использовать  I - Закрыть инвентарь");
+        // Подсказки управления
+        mvwhline(win, max_y - 3, 2, ACS_HLINE, max_x - 4);
+        mvwprintw(win, max_y - 2, 2, "U - Использовать  I - Закрыть инвентарь  ↑↓ - Выбрать");
         
         wrefresh(win);
         
@@ -892,23 +966,25 @@ static void open_inventory_in_combat(void) {
                 break;
                 
             case 'u':
-            case 'U':
+            case 'U': {
                 inventory_node *node = inventory_get_node_at_index(player_inv, selected_index);
                 if (node && node->type == ITEM_CONSUMABLE) {
                     if (inventory_use_consumable(player, player_inv, node, &global_db)) {
-                        mvwprintw(win, getmaxy(win) - 1, 2, "Предмет использован!");
+                        mvwprintw(win, max_y - 1, 2, "Предмет использован!");
                         wrefresh(win);
-                        napms(TIME);
-                        return;
+                        napms(1000);
+                        return; // Выходим из инвентаря после использования
                     }
                 } else if (node && node->type == ITEM_ARTIFACT) {
-                    mvwprintw(win, getmaxy(win) - 1, 2, "В бою нельзя экипировать артефакты!");
+                    mvwprintw(win, max_y - 1, 2, "В бою нельзя экипировать артефакты!");
                     wrefresh(win);
-                    napms(TIME);
+                    napms(1000);
                 }
                 break;
+            }
             case 'i':
             case 'I':
+            case 27: // ESC
                 inventory_open = 0;
                 break;
         }
