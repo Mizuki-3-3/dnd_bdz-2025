@@ -27,7 +27,7 @@ typedef struct item_database{
 } item_database;
 
 void itemdb_init(item_database* db);
-item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id);
+item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, artifact_type type, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id);
 item_template* itemdb_create_consumable(item_database* db, const char* name, consumable_type type, int power, int duration, int id);
 item_template* itemdb_find_by_id(item_database* db, int id);
 item_template* itemdb_create_location(item_database* db, const char* name, const char* desc, int exits_count, loc_type type, int id);

@@ -3,8 +3,7 @@
 
 #include <string.h>
 
-#define MAX_NAME_LENGTH  32
-#define MAX_ITEMS 100
+#define MAX_NAME_LENGTH  64
 
 typedef enum{
     FOOD,
@@ -15,11 +14,19 @@ typedef enum{
     MAGIC_POT    //БАФФ МАГИЧЕСКОЙ СИЛЫ
 }consumable_type;
 
+typedef enum {
+    ART_WEAPON,
+    ART_ARMOR,
+    ART_PANTS,
+    ART_BOOTS,
+} artifact_type;
+
 typedef struct{
     int weight_bonus;
     int magic_bonus;
     int strength_bonus;
     int dexterity_bonus;
+    artifact_type type;
 }artifact;
 
 typedef struct {

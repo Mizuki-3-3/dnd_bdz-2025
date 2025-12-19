@@ -24,6 +24,7 @@ char player_name[MAX_NAME_LENGTH];
 int chosen_class;
 #define TIME 1000
 #define FILE_SIZE 256
+#define MAX_LOCATIONS 7
 
 static int location_connections[7][7] = {// Матрица смежности локаций 
     {0, 1, 1, 0, 0, 0, 0},  // 0 - Берег реки
@@ -89,25 +90,25 @@ void create_game_windows(void) {
     }
 }
 
-int choose_class(WINDOW *win) {
+int choose_class(WINDOW *win, int max_y, int max_x) {
     if (!win) return 1;
     
     werase(win);
     
-    mvwprintw(win, 1, 2, "Выберите класс персонажа:");
-    mvwprintw(win, 3, 2, "1. Маг");
-    mvwprintw(win, 4, 2, "   - Высокий урон магией");
-    mvwprintw(win, 5, 2, "   - Меньше здоровья");
+    mvwprintw(win, max_y/2 - 7, max_x/2 - 13, "Выберите класс персонажа:");
+    mvwprintw(win, max_y/2-6, max_x/2 - 13, "1. Маг");
+    mvwprintw(win,  max_y/2-5, max_x/2 - 13, " - Высокий урон магией");
+    mvwprintw(win,  max_y/2-4, max_x/2 - 13, " - Меньше здоровья");
     
-    mvwprintw(win, 7, 2, "2. Воин");
-    mvwprintw(win, 8, 2, "   - Высокое здоровье и сила");
-    mvwprintw(win, 9, 2, "   - Меньше маны");
+    mvwprintw(win,  max_y/2-2, max_x/2 - 13, "2. Воин");
+    mvwprintw(win, max_y/2-1, max_x/2 - 13, "   - Высокое здоровье и сила");
+    mvwprintw(win, max_y/2, max_x/2 - 13, "   - Меньше маны");
     
-    mvwprintw(win, 11, 2, "3. Плут");
-    mvwprintw(win, 12, 2, "   - Высокая ловкость");
-    mvwprintw(win, 13, 2, "   - Критические удары");
+    mvwprintw(win, max_y/2+2, max_x/2 - 13, "3. Плут");
+    mvwprintw(win, max_y/2+3, max_x/2 - 13, "   - Высокая ловкость");
+    mvwprintw(win, max_y/2+4, max_x/2 - 13, "   - Критические удары");
     
-    mvwprintw(win, 15, 2, "Выбор (1-3): ");
+    mvwprintw(win, max_y+6, max_x/2 - 13, "Выберите 1, 2 или 3");
     wrefresh(win);
     
     int choice;
@@ -146,7 +147,7 @@ void init_new_game(const char *name, int class) {
         if (narrative_win && narrative_win->overlay) {
             WINDOW *win = narrative_win->overlay;
             werase(win);
-            mvwprintw(win, 1, 2, "ошибка выделения памяти под героя!");
+            mvwprintw(win, 1, 2, "ошибка выделения памяти под героя");
             wrefresh(win);
             napms(TIME);
         }
@@ -159,7 +160,7 @@ void init_new_game(const char *name, int class) {
         if (narrative_win && narrative_win->overlay) {
             WINDOW *win = narrative_win->overlay;
             werase(win);
-            mvwprintw(win, 1, 2, "Ошибка создания инвентаря!");
+            mvwprintw(win, 1, 2, "oшибка создания инвентаря!");
             wrefresh(win);
             napms(TIME);
         }
@@ -182,6 +183,11 @@ void init_new_game(const char *name, int class) {
             mvwprintw(win, getmaxy(win) - 2, 2, "ошибка на предметах!");
             wrefresh(win);
         }
+    }
+    inventory_node *current = player_inv->head;
+    while (current){
+        inventory_equip_artifact(player_inv, current, &global_db);
+        current = current->next;
     }
 
     current_location = 0;
@@ -466,12 +472,11 @@ void game_loop(void) {
             int max_y, max_x;
             getmaxyx(win, max_y, max_x);
             
-            mvwprintw(win, max_y/2 - 2, max_x/2 - 10, "=== ИГРА ===");
-            mvwprintw(win, max_y/2, max_x/2 - 15, "1. Новая игра");
-            mvwprintw(win, max_y/2 + 1, max_x/2 - 15, "2. Загрузить игру");
-            mvwprintw(win, max_y/2 + 2, max_x/2 - 15, "3. Выход");
-            mvwprintw(win, max_y/2 + 4, max_x/2 - 15, "Выберите (1-3): ");
-            
+            mvwprintw(win, max_y/2 - 4, max_x/2 - 10, "=== МЕНЮ ===");
+            mvwprintw(win, max_y/2-2, max_x/2 - 15, "1. Новая игра");
+            mvwprintw(win, max_y/2 - 1, max_x/2 - 15, "2. Загрузить игру");
+            mvwprintw(win, max_y/2, max_x/2 - 15, "3. Выход");
+            mvwprintw(win, max_y/2 +2, max_x/2 - 15, "Выберите 1, 2 или 3");
             wrefresh(win);
             
             int choice = 0;
@@ -485,13 +490,13 @@ void game_loop(void) {
             if (choice == 1) { 
                 echo();
                 werase(win);
-                mvwprintw(win, 1, 2, "Введите имя героя:");
-                mvwprintw(win, 2, 2, "> ");
+                mvwprintw(win, max_y/2 - 4, max_x/2 - 10, "Введите имя героя:");
+                mvwprintw(win, max_y/2 - 2, max_x/2 - 10, "> ");
                 wrefresh(win);
                 wgetnstr(win, player_name, MAX_NAME_LENGTH-1);
                 noecho();
                 
-                chosen_class = choose_class(win);
+                chosen_class = choose_class(win, max_y, max_x);
                 init_new_game(player_name, chosen_class);
                 chapter1(win);
                 break;
@@ -499,17 +504,17 @@ void game_loop(void) {
             else if (choice == 2) { 
                 echo();
                 werase(win);
-                mvwprintw(win, 1, 2, "Введите имя сохранения:");
-                mvwprintw(win, 2, 2, "> ");
+                mvwprintw(win, max_y/2 - 4, max_x/2 - 10, "Введите имя сохранения:");
+                mvwprintw(win, max_y/2 - 2, max_x/2 - 10, "> ");
                 wrefresh(win);
                 char save_name[FILE_SIZE];
-                wgetnstr(win, save_name, 255);
+                wgetnstr(win, save_name, FILE_SIZE-1);
                 noecho();
                 
                 if (load_saved_game(save_name)) {
                     break; 
                 } else {
-                    mvwprintw(win, 4, 2, "Ошибка загрузки! Нажмите любую клавишу...");
+                    mvwprintw(win, max_y/2, max_x/2 - 10, "Ошибка загрузки! Нажмите любую клавишу");
                     wrefresh(win);
                     getch();
                 }
@@ -1073,8 +1078,6 @@ void open_inventory(void) {
 }
 
 void use_item_from_inventory(int index) {
-    if (!player_inv) return;
-    
     inventory_node *node = inventory_get_node_at_index(player_inv, index);
     if (!node) return;
     
@@ -1083,19 +1086,9 @@ void use_item_from_inventory(int index) {
     
     if (node->type == ITEM_ARTIFACT) {
         if (node->state.artifact_state.is_equipped) {
-            for (int i = 0; i < MAX_EQUIPPED; i++) {
-                if (player_inv->equipped[i] == node) {
-                    inventory_unequip_artifact(player_inv, (equipment_slot)i);
-                    break;
-                }
-            }
+            inventory_unequip_artifact(player_inv, node->state.artifact_state.slot);
         } else {
-            for (int i = 0; i < MAX_EQUIPPED; i++) {
-                if (!player_inv->equipped[i]) {
-                    inventory_equip_artifact(player_inv, node, (equipment_slot)i);
-                    break;
-                }
-            }
+            int result = inventory_equip_artifact(player_inv, node, &global_db);
         }
     } else {
         inventory_use_consumable(player, player_inv, node, &global_db);
@@ -1206,7 +1199,7 @@ static void give_monster_loot(Monster* monster) {
     
     if (current_location == 6) { // победили дозорного и валим
         mvwprintw(win, max_y/2, max_x/2 - 10, "Вы достигли своей цели!");
-        mvwprintw(win, max_y/2, max_x/2 - 15, "Поздравляем с завершением игры!");
+        mvwprintw(win, max_y/2+1, max_x/2 - 15, "Поздравляем с завершением игры!");
         wrefresh(win);
         napms(2*TIME);
         save_current_game();

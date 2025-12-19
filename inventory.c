@@ -22,7 +22,6 @@ inventory* create_inventory(void) {
 }
 
 void inventory_update_capacity(inventory *inv, int player_level) {
-    if (!inv) return;
     inv->max_slots = BASE_CAPACITY + ((player_level-1) * CAPACITY_PER_LEVEL);
 }
 
@@ -60,7 +59,7 @@ int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int
         free(new_node);
         return 0;
     }
-    //добавим
+    //добавим в список
     if (!inv->head) {
         inv->head = new_node;
         inv->tail = new_node;
@@ -74,8 +73,6 @@ int inventory_add_item_by_id(inventory *inv, item_database *db, int item_id, int
 }
 
 int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
-    if (!inv || !node_to_remove) return 0;
-    
     if (!inv->head) return 0;
     
     // если удаляем первый элемент
@@ -132,7 +129,7 @@ int inventory_remove_item(inventory *inv, inventory_node *node_to_remove) {
 }
 
 inventory_node* inventory_get_node_at_index(inventory *inv, int index) {
-    if (!inv || index < 0 || index >= inv->count) {
+    if (index < 0 || index >= inv->count) {
         return NULL;
     }
     
@@ -144,19 +141,52 @@ inventory_node* inventory_get_node_at_index(inventory *inv, int index) {
     return current;
 }
 
-int inventory_equip_artifact(inventory *inv, inventory_node *node, equipment_slot slot) {
-    if (!inv || !node || slot < 0 || slot >= MAX_EQUIPPED) {
+equipment_slot get_slot_for_artifact_type(artifact_type type) {
+    switch(type) {
+        case ART_WEAPON:    return SLOT_WEAPON;
+        case ART_ARMOR:     return SLOT_ARMOR;
+        case ART_PANTS:      return SLOT_PANTS;
+        case ART_BOOTS:     return SLOT_BOOTS;
+        default:            return -1;
+    }
+}
+
+int inventory_equip_artifact(inventory *inv, inventory_node *node, item_database *db) {
+    if ( node->type != ITEM_ARTIFACT) {
         return 0;
     }
-    if (node->type != ITEM_ARTIFACT) {
+    
+    item_template *item = itemdb_find_by_id(db, node->item_id);
+    if (!item || item->id < 200 || item->id >= 300) {
         return 0;
     }
+    artifact *art = &item->template.artifact_template;
+    equipment_slot slot = get_slot_for_artifact_type(art->type);
+    
+    if (slot == -1) {
+        return 0;
+    }
+    
     if (inv->equipped[slot]) {
-        inv->equipped[slot]->state.artifact_state.is_equipped = 0;
+        inventory_unequip_artifact(inv, slot);
     }
+    
     inv->equipped[slot] = node;
     node->state.artifact_state.is_equipped = 1;
+    node->state.artifact_state.slot = slot;  // Сохраняем слот
+    
     return 1;
+}
+
+const char* get_slot_name(equipment_slot slot) {
+    static const char* slot_names[] = {
+        "Оружие", "Броня", "Штаны", "Обувь",
+    };
+    
+    if (slot >= 0 && slot < MAX_EQUIPPED) {
+        return slot_names[slot];
+    }
+    return "Неизвестно";
 }
 
 int inventory_unequip_artifact(inventory *inv, equipment_slot slot) {
@@ -189,23 +219,52 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
     int max_y = getmaxy(inv->win);
     int max_x = getmaxx(inv->win);
     
+    // Проверяем минимальные размеры окна
+    if (max_x < 40 || max_y < 10) {
+        mvwprintw(inv->win, 1, 1, "Окно слишком мало!");
+        wrefresh(inv->win);
+        return;
+    }
+    
     if (hero) {
+        // ЛЕВАЯ ЧАСТЬ: статистика героя и список предметов
         mvwprintw(inv->win, line++, 2, "=== %s ===", hero->name);
         mvwprintw(inv->win, line++, 2, "Уровень: %d", hero->level);
         mvwprintw(inv->win, line++, 2, "HP: %d/%d", hero->hp, hero->max_hp);
         mvwprintw(inv->win, line++, 2, "MP: %d/%d", hero->mp, hero->max_mp);
         mvwprintw(inv->win, line++, 2, "Сила: %d Ловк: %d", hero->strength, hero->dexterity);
         mvwprintw(inv->win, line++, 2, "Магия: %d", hero->magic);
-        mvwprintw(inv->win, line++, 2, "слоты: [%d/%d]", inv->count,inv->max_slots);
+        mvwprintw(inv->win, line++, 2, "Слоты: [%d/%d]", inv->count, inv->max_slots);
         line++; // пустая строка
+        
+        // ПРАВАЯ ЧАСТЬ: экипировка
+        int right_line = 1;
+        mvwprintw(inv->win, right_line++, max_x/2 + 2, "=== Экипировка ===");
+        for (int i = 0; i < MAX_EQUIPPED; i++) {
+            if (inv->equipped[i]) {
+                item_template* item = itemdb_find_by_id(db, inv->equipped[i]->item_id);
+                if (item) {
+                    mvwprintw(inv->win, right_line++, max_x/2 + 2, "%s: %s", get_slot_name(i), item->name);
+                }
+            } else {
+                mvwprintw(inv->win, right_line++, max_x/2 + 2, "%s: [пусто]", get_slot_name(i));
+            }
+        }
+        
+        // Рисуем вертикальную линию между частями
+        int line_height = (line > 9 ? line : 9) - 1;
+        if (line_height > max_y - 2) line_height = max_y - 2;
+        if (line_height > 0) {
+            mvwvline(inv->win, 1, max_x/2, ACS_VLINE, line_height);
+        }
+        mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
     }
     
-    mvwhline(inv->win, line++, 1, ACS_HLINE, max_x - 2);
-    
+    // Вывод списка предметов (продолжение левой части)
     inventory_node *current = inv->head;
     int index = 0;
     
-    while (current && line < max_y - 1) {
+    while (current && line < max_y - 3) {
         item_template* template = itemdb_find_by_id(db, current->item_id);
         if (!template) {
             current = current->next;
@@ -238,19 +297,15 @@ void display_inventory(inventory *inv, item_database *db, Hero *hero, int select
         index++;
     }
     
-    
-    // подсказки
-    if (line < max_y - 2) {
-        line = max_y - 3;
-        mvwprintw(inv->win, line++, 2, "E - Использовать  D - Выбросить");
-        mvwprintw(inv->win, line++, 2, "I - Закрыть");
-    }
+    // Подсказки
+    mvwprintw(inv->win, max_y - 3, 2, "E - Использовать  D - Выбросить");
+    mvwprintw(inv->win, max_y - 2, 2, "I - Закрыть инвентарь");
     
     wrefresh(inv->win);
 }
 
 int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, item_database *db) {
-    if (!hero || !inv || !node || !db || node->type != ITEM_CONSUMABLE) return 0;
+    if (node->type != ITEM_CONSUMABLE) return 0;
     
     item_template *item = itemdb_find_by_id(db, node->item_id);
     if (!item) return 0;
@@ -299,8 +354,6 @@ int inventory_use_consumable(Hero *hero, inventory *inv, inventory_node *node, i
 }
 
 void calculate_stats_from_equipment(Hero *hero, inventory *inv, item_database *db) {
-    if (!hero || !inv || !db) return;
-    
     // сбрасываем статы к базовым
     hero->strength = hero->base_strength;
     hero->dexterity = hero->base_dexterity;

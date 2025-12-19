@@ -4,13 +4,17 @@
 #include "hero.h"
 
 Hero* create_hero(const char* name, int class) {
-    if (!name || strlen(name) == 0) strncpy(name, "Браконьер", sizeof("Браконьер"));
-
     Hero* h = malloc(sizeof(Hero));
-    if (!h) return NULL;
-    strncpy(h->name, name, MAX_NAME_LENGTH - 1);
-    h->name[MAX_NAME_LENGTH - 1] = '\0';
+    if (!h) return 0;
 
+    if (name && strlen(name) > 0){
+        if (!h) return NULL;
+        strncpy(h->name, name, MAX_NAME_LENGTH - 1);
+        h->name[MAX_NAME_LENGTH - 1] = '\0';
+    }else{
+        strncpy(h->name, "Браконьер", MAX_NAME_LENGTH - 1);
+        h->name[MAX_NAME_LENGTH - 1] = '\0';
+    }
     switch (class){
         case 1: // маг
             h->level = 1;
@@ -143,12 +147,12 @@ void update_effects(Hero *hero) {
                     break;
             }
             
-            // Сдвигаем остальные эффекты
+            // сдвигаем остальные эффекты
             for (int j = i; j < hero->effect_count - 1; j++) {
                 hero->active_effects[j] = hero->active_effects[j + 1];
             }
             hero->effect_count--;
-            i--; // Проверяем текущую позицию снова
+            i--; //проверяем текущую позицию снова
         }
     }
 }

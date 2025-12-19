@@ -14,7 +14,7 @@ void itemdb_init(item_database* db) {
     }
 }
 
-item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id) {
+item_template* itemdb_create_artifact(item_database* db, const char* name, const char* desc, artifact_type type, int weight_bonus, int magic_bonus, int strength_bonus, int dexterity_bonus, int id) {
     if (!db || db->count >= MAX_ITEMS) return NULL;
     
     item_template* item = &db->items[db->count];
@@ -36,7 +36,8 @@ item_template* itemdb_create_artifact(item_database* db, const char* name, const
     item->template.artifact_template.magic_bonus = magic_bonus;
     item->template.artifact_template.strength_bonus = strength_bonus;
     item->template.artifact_template.dexterity_bonus = dexterity_bonus;
-    
+    item->template.artifact_template.type = type;
+
     db->count++;
     return item;
 }
@@ -85,9 +86,7 @@ item_template* itemdb_create_location(item_database* db, const char* name, const
     return loc;
 }
 
-item_template* itemdb_find_by_id(item_database* db, int id) {
-    if (!db) return NULL;
-    
+item_template* itemdb_find_by_id(item_database* db, int id) {    
     for (int i = 0; i < db->count; i++) {
         if (db->items[i].id == id) {
             return &db->items[i];
@@ -118,31 +117,31 @@ void init_default_items(item_database* db) {
     temp_item = itemdb_create_location(db, "Лабаз в корнях", "Вы продираетесь сквозь завесу свисающих корней огромной поваленной сосны — и попадаете в тесное, но сухое пространство под её основанием. Это оно. Ваш тайник. Здесь стоит примитивный алхимический набор, на полке — склянки, а в углу за камнем спрятан просмоленный мешок с самым ценным. Однако тишина здесь кажется настороженной... Слишком тихо.Как будто кто-то уже ждал.",2, LOC_MONSTER, 6);
     if (!temp_item) return;
     // Создаем артефакты
-    temp_item = itemdb_create_artifact(db, "Короткий кинжал", "Ржавый, но острый резак. Всегда с тобой. Рукоять липкая от смолы.", 0, 0, 2, 0, 1);
+    temp_item = itemdb_create_artifact(db, "Короткий кинжал", "Ржавый, но острый резак. Всегда с тобой. Рукоять липкая от смолы.", ART_WEAPON, 0, 0, 2, 0, 1);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Мокрые сапоги", "Промокшие насквозь. Подошва стоптана, но держится. Хлюпают на каждом шагу.", 0, 0, 0, 2, 2);
+    temp_item = itemdb_create_artifact(db, "Мокрые сапоги", "Промокшие насквозь. Подошва стоптана, но держится. Хлюпают на каждом шагу.", ART_BOOTS, 0, 0, 0, 2, 2);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Простая рубаха", "Мокрая, грубая ткань. Холодная и тяжёлая, пахнет тиной.", 0, 2, 0, 0,3);
+    temp_item = itemdb_create_artifact(db, "Простая рубаха", "Мокрая, грубая ткань. Холодная и тяжёлая, пахнет тиной.", ART_ARMOR, 0, 2, 0, 0,3);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Простые портки", "Промокшие холщовые штаны. Намокли, стали неудобными и тяжёлыми.", 0,0,1,-1,4);
+    temp_item = itemdb_create_artifact(db, "Простые портки", "Промокшие холщовые штаны. Намокли, стали неудобными и тяжёлыми.", ART_PANTS, 0,0,1,-1,4);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Обмотки следопыта", "Плотные, серые шерстяные обмотки, пропитанные воском и хвойной смолой. Быстро сохнут, не шуршат.", 0, 0, 0, 0,5);
+    temp_item = itemdb_create_artifact(db, "Обмотки следопыта", "Плотные, серые шерстяные обмотки, пропитанные воском и хвойной смолой. Быстро сохнут, не шуршат.", ART_PANTS, 0, 0, 0, 0,5);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Сапоги на мягкой подошве", "Поношенные, но качественные сапоги дозорного. Подошва из нескольких слоёв войлока и кожи — идеальна для бесшумного шага.", 0, 0, 0, 0, 6);
+    temp_item = itemdb_create_artifact(db, "Сапоги на мягкой подошве", "Поношенные, но качественные сапоги дозорного. Подошва из нескольких слоёв войлока и кожи — идеальна для бесшумного шага.", ART_BOOTS, 0, 0, 0, 0, 6);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Камзол из вощёной кожи", "Короткий, тёмно-зелёный дублет со вставками из упругой, промасленной кожи на груди и плечах. Карманы для метательных ножей.", 0, 1, 1, 6, 7);
+    temp_item = itemdb_create_artifact(db, "Камзол из вощёной кожи", "Короткий, тёмно-зелёный дублет со вставками из упругой, промасленной кожи на груди и плечах. Карманы для метательных ножей.", ART_ARMOR, 0, 1, 1, 6, 7);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Набедренники из грубой шкуры", "Сшиты из полос толстой шкуры, снятой с оборотня. Волосы снаружи, мех — к телу для тепла. Пахнут дымом и зверем.", 0, 0, 5, 1, 8);
+    temp_item = itemdb_create_artifact(db, "Набедренники из грубой шкуры", "Сшиты из полос толстой шкуры, снятой с оборотня. Волосы снаружи, мех — к телу для тепла. Пахнут дымом и зверем.", ART_PANTS, 0, 0, 5, 1, 8);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Прочные сапоги из кабаньей кожи", "Тяжёлые, с толстой подошвой, подбитой гвоздями. Были на ногах оборотня и деформировались, но ещё целы.", 0, 0, 4, 3,9);
+    temp_item = itemdb_create_artifact(db, "Прочные сапоги из кабаньей кожи", "Тяжёлые, с толстой подошвой, подбитой гвоздями. Были на ногах оборотня и деформировались, но ещё целы.", ART_BOOTS, 0, 0, 4, 3,9);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Туника из свалянной шерсти и кожи", "Грубая, колючая туника, сшитая из шкур нескольких животных. На плечах — дополнительные нашивки из просмолённой кожи для защиты.", 0, -1, 6, 0,10);
+    temp_item = itemdb_create_artifact(db, "Туника из свалянной шерсти и кожи", "Грубая, колючая туника, сшитая из шкур нескольких животных. На плечах — дополнительные нашивки из просмолённой кожи для защиты.", ART_ARMOR, 0, -1, 6, 0,10);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Поножи из хитиновых пластин", "Сделаны из твёрдых сегментов панциря грибного паука, скреплённых его же прочными нитями. Тёплые, лёгкие, слегка потрескивают при ходьбе.", 0, 5, 0, 1, 11);
+    temp_item = itemdb_create_artifact(db, "Поножи из хитиновых пластин", "Сделаны из твёрдых сегментов панциря грибного паука, скреплённых его же прочными нитями. Тёплые, лёгкие, слегка потрескивают при ходьбе.", ART_PANTS, 0, 5, 0, 1, 11);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Башмаки из плесневой кожи", "Сшиты из высушенной и обработанной кожи жертв паука, пропитаны спорами. Подошва покрыта липким, уже мёртвым мицелием, обеспечивающим бесшумное сцепление.", 0, 4, 3, 0, 12);
+    temp_item = itemdb_create_artifact(db, "Башмаки из плесневой кожи", "Сшиты из высушенной и обработанной кожи жертв паука, пропитаны спорами. Подошва покрыта липким, уже мёртвым мицелием, обеспечивающим бесшумное сцепление.",ART_BOOTS, 0, 4, 3, 0, 12);
     if (!temp_item) return;
-    temp_item = itemdb_create_artifact(db, "Безрукавка-кокон", "Плотная, серая ткань, сплетённая из паутины и волокон грибницы. На груди нашит высушенный глазок паука, залитый смолой.", 0, 6, -1, 0, 13);
+    temp_item = itemdb_create_artifact(db, "Безрукавка-кокон", "Плотная, серая ткань, сплетённая из паутины и волокон грибницы. На груди нашит высушенный глазок паука, залитый смолой.", ART_ARMOR, 0, 6, -1, 0, 13);
     if (!temp_item) return;
 
     // делаем расходники

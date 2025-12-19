@@ -85,27 +85,21 @@ void tui_win_label(WINDOW *win, char *label, int pos) {
 }
 
 void print_wrapped_text(WINDOW *win, const char *text) {
-    int win_height, win_width;
+    int win_height=0, win_width=0, y=0, x=0, line_len=0,start_pos = 0, max_chars = 0, chars_to_print=0;
     getmaxyx(win, win_height, win_width);
-    
-    int y, x;
     getyx(win, y, x); // Текущая позиция курсора
-    
+    max_chars = win_width - x;
     char *text_copy = strdup(text);
     char *line = strtok(text_copy, "\n");
-    
     while (line != NULL) {
-        int line_len = strlen(line);
-        int start_pos = 0;
-        
+        line_len = strlen(line);
+        start_pos = 0;
         while (start_pos < line_len) {
             if (y >= win_height) {
                 free(text_copy);
                 return;
             }
-            
-            int max_chars = win_width - x;
-            int chars_to_print;
+            max_chars = win_width - x;
             
             if (max_chars > 0) {
                 if (line_len - start_pos <= max_chars) {
@@ -113,8 +107,7 @@ void print_wrapped_text(WINDOW *win, const char *text) {
                 } else {
                     chars_to_print = max_chars;
                     while (chars_to_print > 0 && 
-                           line[start_pos + chars_to_print] != ' ' &&
-                           line[start_pos + chars_to_print - 1] != ' ') {
+                           line[start_pos + chars_to_print] != ' ' && line[start_pos + chars_to_print - 1] != ' ') {
                         chars_to_print--;
                     }
                     
@@ -133,11 +126,8 @@ void print_wrapped_text(WINDOW *win, const char *text) {
                 y++;
                 x = 0;
                 
-                if (chars_to_print > 0 && 
-                    start_pos > 0 && 
-                    start_pos < line_len &&
-                    line[start_pos] != ' ' &&
-                    line[start_pos - 1] != ' ') {
+                if (chars_to_print > 0 && start_pos > 0 && start_pos < line_len &&
+                    line[start_pos] != ' ' &&line[start_pos - 1] != ' ') {
                 }
             } else {
                 y++;
