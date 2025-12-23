@@ -22,7 +22,4 @@ typedef struct location{
     int exit_count;
 }location;
 
-location** creat_map(int* loc_count);
-void destroy_map(location** locs, int count);
-
 #endif
